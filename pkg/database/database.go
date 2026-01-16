@@ -103,3 +103,9 @@ type DocumentStore interface {
 	// Delete removes documents matching the filter
 	Delete(ctx context.Context, collection string, filter map[string]interface{}) error
 }
+
+// Closeable is implemented by connections that can be closed.
+// Adapters should implement this interface.
+type Closeable interface {
+	Close() error
+}

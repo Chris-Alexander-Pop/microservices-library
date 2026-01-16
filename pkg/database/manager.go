@@ -4,13 +4,9 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/chris-alexander-pop/system-design-library/pkg/database/sharding"
 	"github.com/chris-alexander-pop/system-design-library/pkg/errors"
-	"github.com/gocql/gocql"
-	"github.com/redis/go-redis/v9"
-	"go.mongodb.org/mongo-driver/mongo"
 	"gorm.io/gorm"
 )
 
@@ -133,44 +129,31 @@ func (m *Manager) Close() error {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	// Helper to close specific types
+	// Helper to close connections via Closeable interface
 	closeConn := func(c interface{}) error {
 		if c == nil {
 			return nil
 		}
 
-		switch v := c.(type) {
-		case *gorm.DB:
-			sqlDB, err := v.DB()
+		// First check for gorm.DB (special case - needs sqlDB.Close())
+		if db, ok := c.(*gorm.DB); ok {
+			sqlDB, err := db.DB()
 			if err != nil {
 				return err
 			}
 			return sqlDB.Close()
-
-		case *mongo.Database:
-			// Mongo Disconnect is on Client
-			if client := v.Client(); client != nil {
-				// Timeout context for disconnect
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				defer cancel()
-				return client.Disconnect(ctx)
-			}
-			return nil
-
-		case *gocql.Session:
-			v.Close()
-			return nil
-
-		case *redis.Client:
-			return v.Close()
-
-		default:
-			// Check if it implements io.Closer
-			if closer, ok := c.(interface{ Close() error }); ok {
-				return closer.Close()
-			}
-			return nil
 		}
+
+		// Otherwise, use Closeable interface (adapters implement this)
+		if closer, ok := c.(Closeable); ok {
+			return closer.Close()
+		}
+
+		// Fallback: check for generic Close() method
+		if closer, ok := c.(interface{ Close() error }); ok {
+			return closer.Close()
+		}
+
 		return nil
 	}
 
