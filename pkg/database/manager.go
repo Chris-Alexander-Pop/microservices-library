@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/chris-alexander-pop/system-design-library/pkg/database/sharding"
 	"github.com/chris-alexander-pop/system-design-library/pkg/errors"
 	"gorm.io/gorm"
 )
@@ -14,9 +15,10 @@ type ConnectionFactory func(cfg Config) (*gorm.DB, error)
 
 // Manager implements the DB interface and manages multiple connections
 type Manager struct {
-	primary *gorm.DB
-	shards  map[string]*gorm.DB
-	mu      sync.RWMutex
+	primary  *gorm.DB
+	shards   map[string]*gorm.DB
+	strategy sharding.Strategy
+	mu       sync.RWMutex
 }
 
 // NewManager creates a new database manager
@@ -46,6 +48,15 @@ func NewManager(cfg ManagerConfig, factory ConnectionFactory) (*Manager, error) 
 		m.shards[id] = shardDB
 	}
 
+	// Initialize strategy if configured
+	if cfg.ShardingStrategy == "consistent_hash" {
+		var shardIDs []string
+		for id := range m.shards {
+			shardIDs = append(shardIDs, id)
+		}
+		m.strategy = sharding.NewConsistentHash(50, shardIDs) // 50 replicas by default
+	}
+
 	return m, nil
 }
 
@@ -68,6 +79,14 @@ func (m *Manager) GetShard(ctx context.Context, key string) (*gorm.DB, error) {
 
 	if db, ok := m.shards[key]; ok {
 		return db.WithContext(ctx), nil
+	}
+
+	// 2. Strategy Routing (if enabled)
+	if m.strategy != nil {
+		shardID := m.strategy.GetShard(key)
+		if db, ok := m.shards[shardID]; ok {
+			return db.WithContext(ctx), nil
+		}
 	}
 
 	// If no shard found, error.

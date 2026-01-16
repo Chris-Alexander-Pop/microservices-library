@@ -21,7 +21,7 @@ func TestDatabaseSuite(t *testing.T) {
 }
 
 // Mock factory using SQLite for speed
-func sqliteFactory(cfg database.Config) (*gorm.DB, error) {
+func SqliteFactory(cfg database.Config) (*gorm.DB, error) {
 	// Use in-memory sqlite with unique name based on host/port to simulate distinct shards
 	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", cfg.Name)
 	return gorm.Open(sqlite.Open(dsn), &gorm.Config{})
@@ -37,7 +37,7 @@ func (s *DatabaseSuite) TestManager_Sharding() {
 	}
 
 	// create manager with sqlite factory
-	mgr, err := database.NewManager(cfg, sqliteFactory)
+	mgr, err := database.NewManager(cfg, SqliteFactory)
 	s.Require().NoError(err)
 	defer mgr.Close()
 

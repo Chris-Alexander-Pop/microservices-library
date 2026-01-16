@@ -41,5 +41,9 @@ func New(cfg database.Config) (*gorm.DB, error) {
 	// Register OTel plugin here if needed (e.g., gormotel)
 	// if err := db.Use(gormotel.NewPlugin()); err != nil { ... }
 
+	// Note: For pgvector support, ensure the 'vector' type is available in schemas.
+	// GORM handles it via raw SQL or by defining a custom data type.
+	// Example: db.Exec("CREATE EXTENSION IF NOT EXISTS vector")
+
 	return db, nil
 }
