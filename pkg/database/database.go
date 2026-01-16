@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -58,6 +59,11 @@ type Config struct {
 	APIKey      string `env:"DB_API_KEY"`     // Pinecone / Cloud API Key
 	Environment string `env:"DB_ENVIRONMENT"` // Pinecone Environment (e.g. us-west1-gcp)
 	ProjectID   string `env:"DB_PROJECT_ID"`  // GCP Project ID / Firestore
+
+	// Connection Pooling (Optimization)
+	MaxOpenConns    int           `env:"DB_MAX_OPEN_CONNS" env-default:"10"`
+	MaxIdleConns    int           `env:"DB_MAX_IDLE_CONNS" env-default:"5"`
+	ConnMaxLifetime time.Duration `env:"DB_CONN_MAX_LIFETIME" env-default:"5m"`
 }
 
 // ManagerConfig holds configuration for the entire database layer, including shards
@@ -82,4 +88,18 @@ type DB interface {
 
 	// Close closes all connections
 	Close() error
+}
+
+// DocumentStore defines a generic interface for document databases (Mongo/Dynamo).
+// This allows testing with in-memory mocks without needing a real Mongo instance.
+type DocumentStore interface {
+	Insert(ctx context.Context, collection string, doc interface{}) error
+	// Find searches for documents matching the query (simple filter)
+	Find(ctx context.Context, collection string, query map[string]interface{}) ([]map[string]interface{}, error)
+
+	// Update modifies documents matching the filter with the update data
+	Update(ctx context.Context, collection string, filter map[string]interface{}, update map[string]interface{}) error
+
+	// Delete removes documents matching the filter
+	Delete(ctx context.Context, collection string, filter map[string]interface{}) error
 }

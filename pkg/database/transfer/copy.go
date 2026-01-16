@@ -5,28 +5,51 @@ import (
 
 	"github.com/chris-alexander-pop/system-design-library/pkg/errors" // Import our error package
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
+
+// ConflictStrategy defines how to handle data conflicts
+type ConflictStrategy string
+
+const (
+	ConflictStrategyNone      ConflictStrategy = ""           // Standard Insert (Fail on conflict)
+	ConflictStrategyDoNothing ConflictStrategy = "do_nothing" // INSERT IGNORE / ON CONFLICT DO NOTHING
+	ConflictStrategyUpdateAll ConflictStrategy = "update_all" // ON CONFLICT UPDATE SET ...
+)
+
+// TransferOptions configures the CopyTable operation
+type TransferOptions struct {
+	BatchSize  int
+	OnConflict ConflictStrategy
+}
 
 // CopyTable transfers data from source to destination for a given model.
 // It uses batch processing to avoid memory overflow.
-func CopyTable(ctx context.Context, src *gorm.DB, dst *gorm.DB, model interface{}, batchSize int) error {
+func CopyTable(ctx context.Context, src *gorm.DB, dst *gorm.DB, model interface{}, opts TransferOptions) error {
 	// 1. Ensure Table Exists in Dst (AutoMigrate)
 	if err := dst.AutoMigrate(model); err != nil {
 		return errors.Wrap(err, "failed to migrate destination table")
 	}
 
 	// 2. Read and Write in Batches
-	var rows []map[string]interface{} // Generic map to hold data
-
-	// We use FindInBatches with map? GORM usually needs a struct slice for FindInBatches.
-	// For generic "model" interface, we might need a slice of that model type.
-	// But `model` is likely a struct instance.
-	// Let's rely on GORM's ability to reflect.
+	var rows []map[string]interface{}
+	batchSize := opts.BatchSize
+	if batchSize <= 0 {
+		batchSize = 100
+	}
 
 	result := src.WithContext(ctx).Model(model).FindInBatches(&rows, batchSize, func(tx *gorm.DB, batch int) error {
-		// Use BulkUpsert style generic create
-		// Clause.OnConflict is driver specific, so careful. simpler to just Create (Insert)
-		if err := dst.WithContext(ctx).Model(model).Create(&rows).Error; err != nil {
+		txDst := dst.WithContext(ctx).Model(model)
+
+		// Apply Conflict Strategy
+		switch opts.OnConflict {
+		case ConflictStrategyDoNothing:
+			txDst = txDst.Clauses(clause.OnConflict{DoNothing: true})
+		case ConflictStrategyUpdateAll:
+			txDst = txDst.Clauses(clause.OnConflict{UpdateAll: true})
+		}
+
+		if err := txDst.Create(&rows).Error; err != nil {
 			return errors.Wrap(err, "failed to insert batch")
 		}
 		return nil

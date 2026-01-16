@@ -24,8 +24,26 @@ func New(cfg database.Config) (*mongo.Database, error) {
 	}
 
 	opts := options.Client().ApplyURI(uri)
+
+	// Load TLS Config Generic
+	tlsConfig, err := database.LoadTLSConfig(cfg)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load tls config")
+	}
+	if tlsConfig != nil {
+		opts.SetTLSConfig(tlsConfig)
+	}
+
 	// Add timeouts
 	opts.SetConnectTimeout(10 * time.Second)
+
+	// Pool Settings
+	if cfg.MaxOpenConns > 0 {
+		opts.SetMaxPoolSize(uint64(cfg.MaxOpenConns))
+	}
+	if cfg.MaxIdleConns > 0 {
+		opts.SetMinPoolSize(uint64(cfg.MaxIdleConns))
+	}
 
 	client, err := mongo.Connect(context.Background(), opts)
 	if err != nil {

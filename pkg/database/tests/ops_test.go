@@ -70,7 +70,10 @@ func (s *OpsSuite) TestBulkOps() {
 	destDB := val2.(*gorm.DB)
 
 	// Copy users from db -> destDB
-	err = transfer.CopyTable(ctx, db, destDB, &User{}, 10)
+	err = transfer.CopyTable(ctx, db, destDB, &User{}, transfer.TransferOptions{
+		BatchSize:  10,
+		OnConflict: transfer.ConflictStrategyDoNothing,
+	})
 	s.NoError(err)
 
 	// Verify dest has data

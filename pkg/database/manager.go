@@ -4,9 +4,13 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/chris-alexander-pop/system-design-library/pkg/database/sharding"
 	"github.com/chris-alexander-pop/system-design-library/pkg/errors"
+	"github.com/gocql/gocql"
+	"github.com/redis/go-redis/v9"
+	"go.mongodb.org/mongo-driver/mongo"
 	"gorm.io/gorm"
 )
 
@@ -130,28 +134,56 @@ func (m *Manager) Close() error {
 	defer m.mu.RUnlock()
 
 	// Helper to close specific types
-	// Since interface{} can be anything, we must check for loose Closer interface or specific types
 	closeConn := func(c interface{}) error {
+		if c == nil {
+			return nil
+		}
+
 		switch v := c.(type) {
 		case *gorm.DB:
-			sqlDB, _ := v.DB()
+			sqlDB, err := v.DB()
+			if err != nil {
+				return err
+			}
 			return sqlDB.Close()
-			// Mongo client has Disconnect
-			// Redis client has Close
-			// but we need to import packages to assert type, or use reflection/interface check
-			// For simplicity, let's skip complex close logic for now as most drivers manage pools.
-			// We really should defined a `Closer` interface in database.go?
+
+		case *mongo.Database:
+			// Mongo Disconnect is on Client
+			if client := v.Client(); client != nil {
+				// Timeout context for disconnect
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				return client.Disconnect(ctx)
+			}
+			return nil
+
+		case *gocql.Session:
+			v.Close()
+			return nil
+
+		case *redis.Client:
+			return v.Close()
+
+		default:
+			// Check if it implements io.Closer
+			if closer, ok := c.(interface{ Close() error }); ok {
+				return closer.Close()
+			}
+			return nil
 		}
 		return nil
 	}
 
-	if err := closeConn(m.primary); err != nil {
-		return err
+	var firstErr error
+	// Close primary
+	if err := closeConn(m.primary); err != nil && firstErr == nil {
+		firstErr = err
 	}
+	// Close shards
 	for _, conn := range m.shards {
-		if err := closeConn(conn); err != nil {
-			return err
+		if err := closeConn(conn); err != nil && firstErr == nil {
+			firstErr = err
 		}
 	}
-	return nil
+	return firstErr
 }

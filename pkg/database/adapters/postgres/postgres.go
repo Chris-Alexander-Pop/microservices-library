@@ -7,7 +7,6 @@ import (
 	"github.com/chris-alexander-pop/system-design-library/pkg/errors"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 // New creates a new Postgres connection using GORM
@@ -21,9 +20,8 @@ func New(cfg database.Config) (*gorm.DB, error) {
 		cfg.Host, cfg.User, cfg.Password, cfg.Name, cfg.Port, cfg.SSLMode)
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		// In a real app, use a custom gorm logger that wraps our pkg/logger
-		// TBI: Implement GORM-to-pkg/logger adapter
-		Logger: logger.Default.LogMode(logger.Info),
+		// Use custom adapter
+		Logger: database.NewGORMLogger(),
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to connect to postgres")
@@ -36,8 +34,9 @@ func New(cfg database.Config) (*gorm.DB, error) {
 	}
 
 	// Default pool settings, can be exposed in Config later
-	sqlDB.SetMaxIdleConns(10)
-	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetMaxIdleConns(cfg.MaxIdleConns)
+	sqlDB.SetMaxOpenConns(cfg.MaxOpenConns)
+	sqlDB.SetConnMaxLifetime(cfg.ConnMaxLifetime)
 
 	// Register OTel plugin here if needed (e.g., gormotel)
 	// if err := db.Use(gormotel.NewPlugin()); err != nil { ... }

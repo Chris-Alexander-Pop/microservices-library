@@ -17,9 +17,12 @@ func New(cfg database.Config) (*redis.Client, error) {
 	}
 
 	opts := &redis.Options{
-		Addr:     fmt.Sprintf("%s:%s", cfg.Host, cfg.Port),
-		Password: cfg.Password, // no password set through env implies empty usually, but we pass what we have
-		DB:       0,            // default DB
+		Addr:         fmt.Sprintf("%s:%s", cfg.Host, cfg.Port),
+		Password:     cfg.Password,
+		DB:           0,
+		PoolSize:     cfg.MaxOpenConns,
+		MinIdleConns: cfg.MaxIdleConns,
+		MaxIdleConns: cfg.MaxIdleConns,
 	}
 
 	// SSL Support

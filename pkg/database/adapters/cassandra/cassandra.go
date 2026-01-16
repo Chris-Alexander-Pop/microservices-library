@@ -16,10 +16,25 @@ func New(cfg database.Config) (*gocql.Session, error) {
 
 	cluster := gocql.NewCluster(cfg.Host)
 	cluster.Keyspace = cfg.Name // Use DB Name as Keyspace
+
+	// Auth
 	if cfg.User != "" && cfg.Password != "" {
 		cluster.Authenticator = gocql.PasswordAuthenticator{
 			Username: cfg.User,
 			Password: cfg.Password,
+		}
+	}
+
+	// Load TLS Config Generic
+	tlsConfig, err := database.LoadTLSConfig(cfg)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load tls config")
+	}
+
+	if tlsConfig != nil {
+		cluster.SslOpts = &gocql.SslOptions{
+			Config:                 tlsConfig,
+			EnableHostVerification: !tlsConfig.InsecureSkipVerify,
 		}
 	}
 

@@ -1,23 +1,42 @@
 package vector
 
 import (
+	"container/heap"
 	"context"
-	"sort"
+	"runtime"
 
 	"github.com/chris-alexander-pop/system-design-library/pkg/errors"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/semaphore"
 )
 
 // SearchFunc defines the signature for searching a single shard
 type SearchFunc func(ctx context.Context, shardID string, vector []float32, limit int) ([]Result, error)
 
-// NOTE: In a real system you would use a min-heap (priority queue) to maintain top-k across all results efficiently.
-// TBI: Implement Min-Heap for aggregation optimization
-// For this library, we'll collect all results and sort them, as K is usually small (e.g., 10-100).
-// Simplicity vs "Overengineering": We'll implement a Scatter-Gather with timeout.
-// TBI: Implement HNSW or IVF index creation and usage for truly large-scale search.
+// ResultHeap implements heap.Interface for a Min-Heap of Results based on Score.
+// We use a Min-Heap to maintain the Top-K HIGHEST scores.
+// The root of the heap will be the item with the LOWEST score among the top K.
+// If we find an item with score > root, we pop root and push new item.
+type ResultHeap []Result
+
+func (h ResultHeap) Len() int           { return len(h) }
+func (h ResultHeap) Less(i, j int) bool { return h[i].Score < h[j].Score } // Min-Heap based on Score
+func (h ResultHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+
+func (h *ResultHeap) Push(x interface{}) {
+	*h = append(*h, x.(Result))
+}
+
+func (h *ResultHeap) Pop() interface{} {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	*h = old[0 : n-1]
+	return x
+}
 
 // ScatterGatherSearch executes search across all shards concurrently
+// Implements bounded concurrency and Heap-based aggregation.
 func ScatterGatherSearch(
 	ctx context.Context,
 	vector []float32,
@@ -25,30 +44,33 @@ func ScatterGatherSearch(
 	shardIDs []string,
 	searchFn SearchFunc,
 ) ([]Result, error) {
-	// 1. Create a derived context with timeout for "Blazing Fast" requirement
-	//    If a shard is slow, we might want to return partial results or fail fast.
-	//    Let's assume user passes timeout in ctx, or we enforce a strict SLA here.
+	// 1. Concurrency Control
+	// Limit concurrency to NumCPU * 2 to prevent explosion
+	maxConcurrency := int64(runtime.NumCPU() * 2)
+	sem := semaphore.NewWeighted(maxConcurrency)
 
 	resultsChan := make(chan []Result, len(shardIDs))
 	g, ctx := errgroup.WithContext(ctx)
 
-	// 2. Scatter: Launch goroutine for each shard
+	// 2. Scatter
 	for _, id := range shardIDs {
-		shardID := id // capture loop var
+		shardID := id
+		if err := sem.Acquire(ctx, 1); err != nil {
+			return nil, err
+		}
+
 		g.Go(func() error {
-			// Fail-safe: recover from panics in user-provided searchFn
+			defer sem.Release(1)
+
+			// Fail-safe
 			defer func() {
 				if r := recover(); r != nil {
-					// Log panic?
+					// In real app, log metrics.Counter("panic.search", 1)
 				}
 			}()
 
 			res, err := searchFn(ctx, shardID, vector, limit)
 			if err != nil {
-				// We can either fail the whole request or ignore this shard.
-				// For "robustness", we might want to log error and assume empty results
-				// if partial availability is allowed.
-				// Here we'll return error to be strict.
 				return errors.Wrap(err, "search failed on shard "+shardID)
 			}
 			resultsChan <- res
@@ -56,27 +78,46 @@ func ScatterGatherSearch(
 		})
 	}
 
-	// 3. Wait for completion
+	// 3. Wait
 	if err := g.Wait(); err != nil {
 		return nil, err
 	}
 	close(resultsChan)
 
-	// 4. Gather: Aggregate results
-	var allResults []Result
-	for res := range resultsChan {
-		allResults = append(allResults, res...)
+	// 4. Gather with Min-Heap (Maintain Top-K)
+	h := &ResultHeap{}
+	heap.Init(h)
+
+	for shardResults := range resultsChan {
+		for _, res := range shardResults {
+			if h.Len() < limit {
+				heap.Push(h, res)
+			} else {
+				// If new score is better than the worst of our top-k
+				if res.Score > (*h)[0].Score {
+					heap.Pop(h)
+					heap.Push(h, res)
+				}
+			}
+		}
 	}
 
-	// 5. Sort: Rerank by Score (Desc for Similarity, Asc for Distance - assuming Similarity here)
-	sort.Slice(allResults, func(i, j int) bool {
-		return allResults[i].Score > allResults[j].Score
-	})
-
-	// 6. Limit
-	if len(allResults) > limit {
-		return allResults[:limit], nil
+	// 5. Extract and Sort (Heap logic leaves them unordered mostly)
+	// Pop all gives us smallest to largest of the top K.
+	finalResults := make([]Result, h.Len())
+	for i := h.Len() - 1; i >= 0; i-- {
+		finalResults[i] = heap.Pop(h).(Result)
 	}
+	// ResultHeap is Min-Heap.
+	// Pop element 1: Smallest.
+	// Pop element 2: Second smallest.
+	// ...
+	// Pop element K: Largest.
+	// We filled `finalResults` from back to front (i=Len-1 down to 0).
+	// So:
+	// finalResults[Len-1] = Smallest
+	// finalResults[0] = Largest
+	// Thus finalResults is sorted Descending (Highest score first). Correct.
 
-	return allResults, nil
+	return finalResults, nil
 }

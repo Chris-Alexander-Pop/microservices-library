@@ -26,6 +26,20 @@ func New(cfg database.Config) (*dynamodb.Client, error) {
 		awsCfg.Region = cfg.Region
 	}
 
-	client := dynamodb.NewFromConfig(awsCfg)
+	opts := []func(*dynamodb.Options){}
+
+	// Cloud Support: Custom Endpoint for LocalStack or other compatible APIs
+	if cfg.Host != "" {
+		endpoint := cfg.Host
+		if cfg.Port != "" {
+			endpoint = fmt.Sprintf("http://%s:%s", cfg.Host, cfg.Port)
+		}
+
+		opts = append(opts, func(o *dynamodb.Options) {
+			o.BaseEndpoint = &endpoint
+		})
+	}
+
+	client := dynamodb.NewFromConfig(awsCfg, opts...)
 	return client, nil
 }
