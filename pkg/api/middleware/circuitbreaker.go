@@ -32,17 +32,6 @@ func CircuitBreakerMiddleware(cb *resilience.CircuitBreaker) func(http.Handler) 
 	}
 }
 
-// statusRecorder captures the HTTP status code.
-type statusRecorder struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-func (r *statusRecorder) WriteHeader(code int) {
-	r.statusCode = code
-	r.ResponseWriter.WriteHeader(code)
-}
-
 type serverError struct {
 	statusCode int
 }

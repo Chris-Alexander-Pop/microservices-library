@@ -2,7 +2,6 @@ package concurrency
 
 import (
 	"hash/fnv"
-	"sync"
 )
 
 const shardCount = 64
@@ -12,7 +11,7 @@ type ShardedMap[K comparable, V any] struct {
 }
 
 type shard[K comparable, V any] struct {
-	sync.RWMutex
+	mu   *SmartRWMutex
 	data map[K]V
 }
 
@@ -23,6 +22,7 @@ func NewShardedMap[K comparable, V any]() *ShardedMap[K, V] {
 	for i := 0; i < shardCount; i++ {
 		m.shards[i] = &shard[K, V]{
 			data: make(map[K]V),
+			mu:   NewSmartRWMutex(MutexConfig{Name: "ShardedMap-Shard"}),
 		}
 	}
 	return m
@@ -47,7 +47,7 @@ type ShardedMapString[V any] struct {
 	shards []*shardString[V]
 }
 type shardString[V any] struct {
-	sync.RWMutex
+	mu   *SmartRWMutex
 	data map[string]V
 }
 
@@ -58,6 +58,7 @@ func NewShardedMapString[V any]() *ShardedMapString[V] {
 	for i := 0; i < shardCount; i++ {
 		m.shards[i] = &shardString[V]{
 			data: make(map[string]V),
+			mu:   NewSmartRWMutex(MutexConfig{Name: "ShardedMapString-Shard"}),
 		}
 	}
 	return m
@@ -71,22 +72,22 @@ func (m *ShardedMapString[V]) getShard(key string) *shardString[V] {
 
 func (m *ShardedMapString[V]) Set(key string, value V) {
 	shard := m.getShard(key)
-	shard.Lock()
-	defer shard.Unlock()
+	shard.mu.Lock()
+	defer shard.mu.Unlock()
 	shard.data[key] = value
 }
 
 func (m *ShardedMapString[V]) Get(key string) (V, bool) {
 	shard := m.getShard(key)
-	shard.RLock()
-	defer shard.RUnlock()
+	shard.mu.RLock()
+	defer shard.mu.RUnlock()
 	val, ok := shard.data[key]
 	return val, ok
 }
 
 func (m *ShardedMapString[V]) Delete(key string) {
 	shard := m.getShard(key)
-	shard.Lock()
-	defer shard.Unlock()
+	shard.mu.Lock()
+	defer shard.mu.Unlock()
 	delete(shard.data, key)
 }

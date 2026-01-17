@@ -3,7 +3,8 @@ package dbtest
 import (
 	"context"
 	"fmt"
-	"sync"
+
+	"github.com/chris-alexander-pop/system-design-library/pkg/concurrency"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/chris-alexander-pop/system-design-library/pkg/database"
@@ -17,7 +18,7 @@ import (
 // MemoryFactory tracks resources that need cleanup (like miniredis)
 type MemoryFactory struct {
 	cleanups []func()
-	mu       sync.Mutex
+	mu       *concurrency.SmartMutex
 }
 
 // Close cleans up all tracked resources
@@ -57,10 +58,15 @@ func (f *MemoryFactory) Factory(cfg database.Config) (interface{}, error) {
 		return client, nil
 
 	case database.StoreTypeDocument:
-		return &MemoryDocumentStore{Data: make(map[string][]interface{})}, nil
+		return &MemoryDocumentStore{
+			Data: make(map[string][]interface{}),
+			mu:   concurrency.NewSmartMutex(concurrency.MutexConfig{Name: "MemoryDocumentStore"}),
+		}, nil
 
 	case database.StoreTypeVector:
-		return &MemoryVectorStore{}, nil
+		return &MemoryVectorStore{
+			mu: concurrency.NewSmartRWMutex(concurrency.MutexConfig{Name: "MemoryVectorStore"}),
+		}, nil
 
 	default:
 		// Fallback for unset Type -> assume SQL if Driver is postgres/mysql generic
@@ -75,7 +81,9 @@ func (f *MemoryFactory) Factory(cfg database.Config) (interface{}, error) {
 // NewFactory creates a new MemoryFactory.
 // Use this if you want to be able to cleanup resources via f.Close()
 func NewFactory() *MemoryFactory {
-	return &MemoryFactory{}
+	return &MemoryFactory{
+		mu: concurrency.NewSmartMutex(concurrency.MutexConfig{Name: "MemoryFactory"}),
+	}
 }
 
 // NewConnectionFactory returns a factory function only.
@@ -89,7 +97,7 @@ func NewConnectionFactory() database.ConnectionFactory {
 // MemoryVectorStore implements vector.Store in memory
 type MemoryVectorStore struct {
 	Vectors map[string][]float32
-	mu      sync.RWMutex
+	mu      *concurrency.SmartRWMutex
 }
 
 func (m *MemoryVectorStore) Search(ctx context.Context, queryVector []float32, limit int) ([]vector.Result, error) {
@@ -114,7 +122,7 @@ func (m *MemoryVectorStore) Delete(ctx context.Context, ids ...string) error {
 // MemoryDocumentStore mock
 type MemoryDocumentStore struct {
 	Data map[string][]interface{} // Collection -> Docs
-	mu   sync.Mutex
+	mu   *concurrency.SmartMutex
 }
 
 func (m *MemoryDocumentStore) Insert(ctx context.Context, collection string, doc interface{}) error {

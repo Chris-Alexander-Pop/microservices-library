@@ -2,12 +2,18 @@ package grpc
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"fmt"
+	"os"
 	"time"
 
+	"github.com/chris-alexander-pop/system-design-library/pkg/logger"
 	"github.com/chris-alexander-pop/system-design-library/pkg/resilience"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 )
@@ -15,6 +21,16 @@ import (
 type Config struct {
 	Target  string        `env:"CLIENT_GRPC_TARGET" env-required:"true"`
 	Timeout time.Duration `env:"CLIENT_TIMEOUT" env-default:"5s"`
+
+	// TLS settings
+	TLSEnabled bool   `env:"CLIENT_TLS_ENABLED" env-default:"false"`
+	CAFile     string `env:"CLIENT_TLS_CA_FILE"`
+	CertFile   string `env:"CLIENT_TLS_CERT_FILE"`
+	KeyFile    string `env:"CLIENT_TLS_KEY_FILE"`
+	Insecure   bool   `env:"CLIENT_TLS_INSECURE" env-default:"false"`
+
+	// Auth
+	BearerToken string `env:"CLIENT_BEARER_TOKEN"`
 
 	// Circuit breaker settings
 	CircuitBreakerEnabled   bool          `env:"CLIENT_GRPC_CB_ENABLED" env-default:"true"`
@@ -29,10 +45,45 @@ type Config struct {
 
 // New creates a robust gRPC connection with optional resilience features.
 func New(ctx context.Context, cfg Config) (*grpc.ClientConn, error) {
-	opts := []grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
+	var opts []grpc.DialOption
+
+	// 1. Credentials (TLS or Insecure)
+	if cfg.TLSEnabled {
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: cfg.Insecure,
+		}
+		if cfg.CAFile != "" {
+			caCert, err := os.ReadFile(cfg.CAFile)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read CA file: %w", err)
+			}
+			caCertPool := x509.NewCertPool()
+			caCertPool.AppendCertsFromPEM(caCert)
+			tlsConfig.RootCAs = caCertPool
+		}
+		if cfg.CertFile != "" && cfg.KeyFile != "" {
+			cert, err := tls.LoadX509KeyPair(cfg.CertFile, cfg.KeyFile)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load client cert: %w", err)
+			}
+			tlsConfig.Certificates = []tls.Certificate{cert}
+		}
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+	} else {
+		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
+
+	// 2. Auth Credentials
+	if cfg.BearerToken != "" {
+		opts = append(opts, grpc.WithPerRPCCredentials(tokenAuth{token: cfg.BearerToken}))
+	}
+
+	// 3. OTel and Logging
+	opts = append(opts,
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
+		grpc.WithUnaryInterceptor(LoggingUnaryInterceptor),
+		grpc.WithStreamInterceptor(LoggingStreamInterceptor),
+	)
 
 	// Add circuit breaker interceptor if enabled
 	if cfg.CircuitBreakerEnabled {
@@ -160,4 +211,75 @@ func RetryUnaryInterceptor(cfg resilience.RetryConfig) grpc.UnaryClientIntercept
 			return invoker(ctx, method, req, reply, cc, opts...)
 		})
 	}
+}
+
+// LoggingUnaryInterceptor logs gRPC unary requests.
+func LoggingUnaryInterceptor(
+	ctx context.Context,
+	method string,
+	req, reply interface{},
+	cc *grpc.ClientConn,
+	invoker grpc.UnaryInvoker,
+	opts ...grpc.CallOption,
+) error {
+	start := time.Now()
+	err := invoker(ctx, method, req, reply, cc, opts...)
+	duration := time.Since(start)
+
+	entry := logger.L().With(
+		"method", method,
+		"duration_ms", duration.Milliseconds(),
+		"type", "unary",
+	)
+
+	if err != nil {
+		entry.Error("grpc request failed", "error", err)
+	} else {
+		entry.Info("grpc request completed")
+	}
+
+	return err
+}
+
+// LoggingStreamInterceptor logs gRPC stream requests.
+func LoggingStreamInterceptor(
+	ctx context.Context,
+	desc *grpc.StreamDesc,
+	cc *grpc.ClientConn,
+	method string,
+	streamer grpc.Streamer,
+	opts ...grpc.CallOption,
+) (grpc.ClientStream, error) {
+	start := time.Now()
+	stream, err := streamer(ctx, desc, cc, method, opts...)
+	duration := time.Since(start)
+
+	entry := logger.L().With(
+		"method", method,
+		"duration_ms", duration.Milliseconds(),
+		"type", "stream",
+	)
+
+	if err != nil {
+		entry.Error("grpc stream creation failed", "error", err)
+	} else {
+		entry.Info("grpc stream started")
+	}
+
+	return stream, err
+}
+
+// tokenAuth implements credentials.PerRPCCredentials for Bearer tokens.
+type tokenAuth struct {
+	token string
+}
+
+func (t tokenAuth) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+	return map[string]string{
+		"authorization": "Bearer " + t.token,
+	}, nil
+}
+
+func (t tokenAuth) RequireTransportSecurity() bool {
+	return true // Ideally should be true, but depends on config
 }

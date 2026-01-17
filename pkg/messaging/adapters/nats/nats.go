@@ -33,8 +33,9 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
+
+	"github.com/chris-alexander-pop/system-design-library/pkg/concurrency"
 
 	"github.com/chris-alexander-pop/system-design-library/pkg/messaging"
 	"github.com/google/uuid"
@@ -98,7 +99,7 @@ type Broker struct {
 	conn   *nats.Conn
 	js     jetstream.JetStream
 	stream jetstream.Stream
-	mu     sync.RWMutex
+	mu     *concurrency.SmartRWMutex
 	closed bool
 }
 
@@ -127,6 +128,7 @@ func New(cfg Config) (*Broker, error) {
 	broker := &Broker{
 		config: cfg,
 		conn:   conn,
+		mu:     concurrency.NewSmartRWMutex(concurrency.MutexConfig{Name: "NATSBroker"}),
 	}
 
 	// Initialize JetStream if enabled
@@ -249,6 +251,7 @@ func (b *Broker) createJetStreamConsumer(topic string, group string) (messaging.
 		consumer: consumer,
 		subject:  subject,
 		group:    group,
+		mu:       concurrency.NewSmartMutex(concurrency.MutexConfig{Name: "NATSJetStreamConsumer"}),
 	}, nil
 }
 
@@ -257,6 +260,7 @@ func (b *Broker) createCoreConsumer(topic string, group string) (messaging.Consu
 		broker:  b,
 		subject: topic,
 		group:   group,
+		mu:      concurrency.NewSmartMutex(concurrency.MutexConfig{Name: "NATSCoreConsumer"}),
 	}, nil
 }
 
@@ -381,7 +385,7 @@ type coreConsumer struct {
 	subject string
 	group   string
 	sub     *nats.Subscription
-	mu      sync.Mutex
+	mu      *concurrency.SmartMutex
 }
 
 func (c *coreConsumer) Consume(ctx context.Context, handler messaging.MessageHandler) error {
@@ -428,7 +432,7 @@ type jetStreamConsumer struct {
 	consumer jetstream.Consumer
 	subject  string
 	group    string
-	mu       sync.Mutex
+	mu       *concurrency.SmartMutex
 	closed   bool
 }
 

@@ -32,8 +32,9 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
+
+	"github.com/chris-alexander-pop/system-design-library/pkg/concurrency"
 
 	"github.com/chris-alexander-pop/system-design-library/pkg/messaging"
 	"github.com/google/uuid"
@@ -80,7 +81,7 @@ type Config struct {
 type Broker struct {
 	config Config
 	client *redis.Client
-	mu     sync.RWMutex
+	mu     *concurrency.SmartRWMutex
 	closed bool
 }
 
@@ -105,6 +106,7 @@ func New(cfg Config) (*Broker, error) {
 	return &Broker{
 		config: cfg,
 		client: client,
+		mu:     concurrency.NewSmartRWMutex(concurrency.MutexConfig{Name: "RedisBroker"}),
 	}, nil
 }
 
@@ -164,6 +166,7 @@ func (b *Broker) Consumer(topic string, group string) (messaging.Consumer, error
 		streamKey:    streamKey,
 		groupName:    groupName,
 		consumerName: consumerName,
+		mu:           concurrency.NewSmartMutex(concurrency.MutexConfig{Name: "RedisConsumer-" + consumerName}),
 	}, nil
 }
 
@@ -292,7 +295,7 @@ type consumer struct {
 	streamKey    string
 	groupName    string
 	consumerName string
-	mu           sync.Mutex
+	mu           *concurrency.SmartMutex
 	closed       bool
 }
 

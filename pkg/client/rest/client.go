@@ -5,6 +5,12 @@ import (
 	"net/http"
 	"time"
 
+	"crypto/tls"
+	"crypto/x509"
+	"fmt"
+	"os"
+
+	"github.com/chris-alexander-pop/system-design-library/pkg/logger"
 	"github.com/chris-alexander-pop/system-design-library/pkg/resilience"
 	"github.com/hashicorp/go-retryablehttp"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -14,6 +20,17 @@ type Config struct {
 	Timeout   time.Duration `env:"CLIENT_TIMEOUT" env-default:"30s"`
 	Retries   int           `env:"CLIENT_RETRIES" env-default:"3"`
 	UserAgent string        `env:"CLIENT_USER_AGENT" env-default:"system-design-library-client"`
+
+	// Auth
+	BearerToken string `env:"CLIENT_BEARER_TOKEN"`
+	APIKey      string `env:"CLIENT_API_KEY"`
+
+	// TLS settings
+	TLSEnabled bool   `env:"CLIENT_TLS_ENABLED" env-default:"false"`
+	CAFile     string `env:"CLIENT_TLS_CA_FILE"`
+	CertFile   string `env:"CLIENT_TLS_CERT_FILE"`
+	KeyFile    string `env:"CLIENT_TLS_KEY_FILE"`
+	Insecure   bool   `env:"CLIENT_TLS_INSECURE" env-default:"false"`
 
 	// Circuit breaker settings
 	CircuitBreakerEnabled   bool          `env:"CLIENT_CB_ENABLED" env-default:"true"`
@@ -29,20 +46,61 @@ type Client struct {
 }
 
 // New creates a robust HTTP client with Retries, Circuit Breaker, and OTel Tracing
-func New(cfg Config) *Client {
+func New(cfg Config) (*Client, error) {
 	// 1. Retryable Client
 	retryClient := retryablehttp.NewClient()
 	retryClient.RetryMax = cfg.Retries
 	retryClient.HTTPClient.Timeout = cfg.Timeout
 	retryClient.Logger = nil
 
-	// 2. Wrap Transport with OTel
+	// 2. Configure Transport (TLS -> Logging -> OTel -> Base)
 	baseTransport := retryClient.HTTPClient.Transport
 	if baseTransport == nil {
 		baseTransport = http.DefaultTransport
 	}
 
-	otelTransport := otelhttp.NewTransport(baseTransport)
+	// Handle TLS
+	if cfg.TLSEnabled {
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: cfg.Insecure,
+		}
+		if cfg.CAFile != "" {
+			caCert, err := os.ReadFile(cfg.CAFile)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read CA file: %w", err)
+			}
+			caCertPool := x509.NewCertPool()
+			caCertPool.AppendCertsFromPEM(caCert)
+			tlsConfig.RootCAs = caCertPool
+		}
+		if cfg.CertFile != "" && cfg.KeyFile != "" {
+			cert, err := tls.LoadX509KeyPair(cfg.CertFile, cfg.KeyFile)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load client cert: %w", err)
+			}
+			tlsConfig.Certificates = []tls.Certificate{cert}
+		}
+
+		// Clone default transport to avoid modifying global
+		if t, ok := baseTransport.(*http.Transport); ok {
+			t2 := t.Clone()
+			t2.TLSClientConfig = tlsConfig
+			baseTransport = t2
+		} else {
+			// Fallback if not a standard http.Transport
+			baseTransport = &http.Transport{
+				TLSClientConfig: tlsConfig,
+			}
+		}
+	}
+
+	// Add Logging
+	loggingTransport := &LoggingTransport{
+		Next: baseTransport,
+	}
+
+	// Add OTel
+	otelTransport := otelhttp.NewTransport(loggingTransport)
 	retryClient.HTTPClient.Transport = otelTransport
 
 	// 3. Create standard client
@@ -63,7 +121,36 @@ func New(cfg Config) *Client {
 		})
 	}
 
-	return client
+	return client, nil
+}
+
+// LoggingTransport logs requests and responses
+type LoggingTransport struct {
+	Next http.RoundTripper
+}
+
+func (t *LoggingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	start := time.Now()
+
+	resp, err := t.Next.RoundTrip(req)
+
+	duration := time.Since(start)
+
+	// Create log entry with builder pattern
+	entry := logger.L().With(
+		"method", req.Method,
+		"url", req.URL.String(),
+		"duration_ms", duration.Milliseconds(),
+	)
+
+	if err != nil {
+		entry.Error("http request failed", "error", err)
+		return nil, err
+	}
+
+	entry.Info("http request completed", "status", resp.StatusCode)
+
+	return resp, nil
 }
 
 // Do executes the request with circuit breaker protection.
@@ -99,6 +186,17 @@ func (c *Client) Get(ctx context.Context, url string) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Inject Auth Headers
+	if c.config.BearerToken != "" {
+		req.Header.Set("Authorization", "Bearer "+c.config.BearerToken)
+	} else if c.config.APIKey != "" {
+		req.Header.Set("X-API-Key", c.config.APIKey)
+	}
+
+	if c.config.UserAgent != "" {
+		req.Header.Set("User-Agent", c.config.UserAgent)
+	}
+
 	return c.Do(req)
 }
 

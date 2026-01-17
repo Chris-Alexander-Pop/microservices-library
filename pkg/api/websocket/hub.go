@@ -1,11 +1,11 @@
 package websocket
 
 import (
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/chris-alexander-pop/system-design-library/pkg/concurrency"
+	"github.com/chris-alexander-pop/system-design-library/pkg/logger"
 	"github.com/gorilla/websocket"
 )
 
@@ -84,7 +84,7 @@ var upgrader = websocket.Upgrader{
 func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
+		logger.L().Error("websocket upgrade failed", "error", err)
 		return
 	}
 	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 256)}

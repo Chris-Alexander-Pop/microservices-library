@@ -4,7 +4,8 @@ import (
 	"hash/crc32"
 	"sort"
 	"strconv"
-	"sync"
+
+	"github.com/chris-alexander-pop/system-design-library/pkg/concurrency"
 )
 
 // Strategy defines the interface for sharding strategies
@@ -19,7 +20,7 @@ type ConsistentHash struct {
 	replicas int            // Number of virtual nodes per shard
 	keys     []int          // Sorted list of hash keys
 	hashMap  map[int]string // Map of hash key to shard ID
-	mu       sync.RWMutex
+	mu       *concurrency.SmartRWMutex
 }
 
 // NewConsistentHash creates a new ConsistentHash strategy
@@ -27,6 +28,7 @@ func NewConsistentHash(replicas int, shards []string) *ConsistentHash {
 	m := &ConsistentHash{
 		replicas: replicas,
 		hashMap:  make(map[int]string),
+		mu:       concurrency.NewSmartRWMutex(concurrency.MutexConfig{Name: "ConsistentHash"}),
 	}
 	for _, shard := range shards {
 		m.AddShard(shard)

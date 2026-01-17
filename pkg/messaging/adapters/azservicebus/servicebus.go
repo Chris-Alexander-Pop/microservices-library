@@ -35,8 +35,9 @@ package azservicebus
 
 import (
 	"context"
-	"sync"
 	"time"
+
+	"github.com/chris-alexander-pop/system-design-library/pkg/concurrency"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
 	"github.com/chris-alexander-pop/system-design-library/pkg/messaging"
@@ -80,7 +81,7 @@ type Config struct {
 type Broker struct {
 	config Config
 	client *azservicebus.Client
-	mu     sync.RWMutex
+	mu     *concurrency.SmartRWMutex
 	closed bool
 }
 
@@ -102,6 +103,7 @@ func New(cfg Config) (*Broker, error) {
 	return &Broker{
 		config: cfg,
 		client: client,
+		mu:     concurrency.NewSmartRWMutex(concurrency.MutexConfig{Name: "ServiceBusBroker"}),
 	}, nil
 }
 
@@ -183,6 +185,7 @@ func (b *Broker) Consumer(topic string, group string) (messaging.Consumer, error
 	return &consumer{
 		broker:   b,
 		receiver: receiver,
+		mu:       concurrency.NewSmartMutex(concurrency.MutexConfig{Name: "ServiceBusConsumer"}),
 	}, nil
 }
 
@@ -322,7 +325,7 @@ func (p *producer) Close() error {
 type consumer struct {
 	broker   *Broker
 	receiver *azservicebus.Receiver
-	mu       sync.Mutex
+	mu       *concurrency.SmartMutex
 	closed   bool
 }
 

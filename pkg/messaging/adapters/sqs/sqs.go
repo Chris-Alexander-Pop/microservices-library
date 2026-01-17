@@ -30,7 +30,9 @@ package sqs
 import (
 	"context"
 	"strconv"
-	"sync"
+
+	"github.com/chris-alexander-pop/system-design-library/pkg/concurrency"
+
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -79,7 +81,7 @@ type Broker struct {
 	config   Config
 	client   *sqs.Client
 	queueURL string
-	mu       sync.RWMutex
+	mu       *concurrency.SmartRWMutex
 	closed   bool
 }
 
@@ -126,6 +128,7 @@ func New(ctx context.Context, cfg Config) (*Broker, error) {
 		config:   cfg,
 		client:   client,
 		queueURL: queueURL,
+		mu:       concurrency.NewSmartRWMutex(concurrency.MutexConfig{Name: "SQSBroker"}),
 	}, nil
 }
 
@@ -156,6 +159,7 @@ func (b *Broker) Consumer(topic string, group string) (messaging.Consumer, error
 
 	return &consumer{
 		broker: b,
+		mu:     concurrency.NewSmartMutex(concurrency.MutexConfig{Name: "SQSConsumer"}),
 	}, nil
 }
 
@@ -300,7 +304,7 @@ func (p *producer) Close() error {
 // consumer is an SQS consumer.
 type consumer struct {
 	broker *Broker
-	mu     sync.Mutex
+	mu     *concurrency.SmartMutex
 	closed bool
 }
 

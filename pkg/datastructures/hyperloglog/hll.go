@@ -12,7 +12,8 @@ package hyperloglog
 import (
 	"hash/fnv"
 	"math"
-	"sync"
+
+	"github.com/chris-alexander-pop/system-design-library/pkg/concurrency"
 )
 
 // HyperLogLog is a probabilistic cardinality estimator.
@@ -20,7 +21,7 @@ type HyperLogLog struct {
 	registers []uint8 // Bucket registers
 	precision uint8   // Precision (log2 of number of registers)
 	numRegs   uint32  // Number of registers (2^precision)
-	mu        sync.RWMutex
+	mu        *concurrency.SmartRWMutex
 }
 
 // New creates a new HyperLogLog with the given precision.
@@ -48,6 +49,7 @@ func New(precision uint8) *HyperLogLog {
 		registers: make([]uint8, numRegs),
 		precision: precision,
 		numRegs:   numRegs,
+		mu:        concurrency.NewSmartRWMutex(concurrency.MutexConfig{Name: "HyperLogLog"}),
 	}
 }
 

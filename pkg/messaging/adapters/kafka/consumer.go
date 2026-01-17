@@ -2,10 +2,10 @@ package kafka
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/IBM/sarama"
+	"github.com/chris-alexander-pop/system-design-library/pkg/concurrency"
 	"github.com/chris-alexander-pop/system-design-library/pkg/messaging"
 )
 
@@ -15,8 +15,19 @@ type consumer struct {
 	topic         string
 	group         string
 	consumerGroup sarama.ConsumerGroup
-	mu            sync.Mutex
+	mu            *concurrency.SmartMutex
 	closed        bool
+}
+
+// newConsumer creates a new Kafka consumer.
+func newConsumer(b *Broker, topic, group string, consumerGroup sarama.ConsumerGroup) (*consumer, error) {
+	return &consumer{
+		broker:        b,
+		topic:         topic,
+		group:         group,
+		consumerGroup: consumerGroup,
+		mu:            concurrency.NewSmartMutex(concurrency.MutexConfig{Name: "KafkaConsumer"}),
+	}, nil
 }
 
 func (c *consumer) Consume(ctx context.Context, handler messaging.MessageHandler) error {

@@ -24,10 +24,10 @@ import (
 	"context"
 	"crypto/tls"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/IBM/sarama"
+	"github.com/chris-alexander-pop/system-design-library/pkg/concurrency"
 	"github.com/chris-alexander-pop/system-design-library/pkg/messaging"
 )
 
@@ -82,7 +82,7 @@ type Broker struct {
 	config       Config
 	saramaConfig *sarama.Config
 	client       sarama.Client
-	mu           sync.RWMutex
+	mu           *concurrency.SmartRWMutex
 	closed       bool
 }
 
@@ -108,6 +108,7 @@ func New(cfg Config) (*Broker, error) {
 		config:       cfg,
 		saramaConfig: saramaCfg,
 		client:       client,
+		mu:           concurrency.NewSmartRWMutex(concurrency.MutexConfig{Name: "KafkaBroker"}),
 	}, nil
 }
 

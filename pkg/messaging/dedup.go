@@ -2,8 +2,8 @@ package messaging
 
 import (
 	"context"
-	"sync"
 
+	"github.com/chris-alexander-pop/system-design-library/pkg/concurrency"
 	"github.com/chris-alexander-pop/system-design-library/pkg/datastructures/bloomfilter"
 )
 
@@ -15,7 +15,7 @@ import (
 type DeduplicatingConsumer struct {
 	consumer Consumer
 	bloom    *bloomfilter.BloomFilter
-	mu       sync.RWMutex
+	mu       *concurrency.SmartRWMutex
 }
 
 // DeduplicationConfig configures the deduplication filter.
@@ -33,6 +33,7 @@ func NewDeduplicatingConsumer(consumer Consumer, cfg DeduplicationConfig) *Dedup
 	return &DeduplicatingConsumer{
 		consumer: consumer,
 		bloom:    bloomfilter.New(cfg.ExpectedMessages, cfg.FalsePositiveRate),
+		mu:       concurrency.NewSmartRWMutex(concurrency.MutexConfig{Name: "DeduplicatingConsumer"}),
 	}
 }
 

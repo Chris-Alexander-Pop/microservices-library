@@ -6,7 +6,7 @@
 package analytics
 
 import (
-	"sync"
+	"github.com/chris-alexander-pop/system-design-library/pkg/concurrency"
 
 	"github.com/chris-alexander-pop/system-design-library/pkg/datastructures/hyperloglog"
 )
@@ -21,7 +21,7 @@ import (
 type UniqueCounter struct {
 	counters  map[string]*hyperloglog.HyperLogLog
 	precision uint8
-	mu        sync.RWMutex
+	mu        *concurrency.SmartRWMutex
 }
 
 // NewUniqueCounter creates a new unique counter with the given precision.
@@ -30,6 +30,7 @@ func NewUniqueCounter(precision uint8) *UniqueCounter {
 	return &UniqueCounter{
 		counters:  make(map[string]*hyperloglog.HyperLogLog),
 		precision: precision,
+		mu:        concurrency.NewSmartRWMutex(concurrency.MutexConfig{Name: "UniqueCounter"}),
 	}
 }
 

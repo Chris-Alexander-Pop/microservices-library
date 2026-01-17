@@ -2,9 +2,10 @@ package resilience
 
 import (
 	"context"
-	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/chris-alexander-pop/system-design-library/pkg/concurrency"
 
 	"github.com/chris-alexander-pop/system-design-library/pkg/errors"
 	"github.com/chris-alexander-pop/system-design-library/pkg/logger"
@@ -31,7 +32,7 @@ type CircuitBreaker struct {
 	failures    atomic.Int64
 	successes   atomic.Int64
 	lastFailure atomic.Int64 // Unix timestamp
-	mu          sync.RWMutex
+	mu          *concurrency.SmartRWMutex
 }
 
 // NewCircuitBreaker creates a new circuit breaker.
@@ -48,6 +49,7 @@ func NewCircuitBreaker(cfg CircuitBreakerConfig) *CircuitBreaker {
 
 	cb := &CircuitBreaker{
 		config: cfg,
+		mu:     concurrency.NewSmartRWMutex(concurrency.MutexConfig{Name: "CircuitBreaker-" + cfg.Name}),
 	}
 	cb.state.Store(StateClosed)
 	return cb

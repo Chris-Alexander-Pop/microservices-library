@@ -2,9 +2,9 @@ package memory
 
 import (
 	"context"
-	"sync"
 	"time"
 
+	"github.com/chris-alexander-pop/system-design-library/pkg/concurrency"
 	"github.com/chris-alexander-pop/system-design-library/pkg/events"
 )
 
@@ -12,12 +12,13 @@ type Event = events.Event
 
 type MemoryBus struct {
 	handlers map[string][]events.Handler
-	mu       sync.RWMutex
+	mu       *concurrency.SmartRWMutex
 }
 
 func New() *MemoryBus {
 	return &MemoryBus{
 		handlers: make(map[string][]events.Handler),
+		mu:       concurrency.NewSmartRWMutex(concurrency.MutexConfig{Name: "MemoryBus"}),
 	}
 }
 

@@ -14,7 +14,8 @@ import (
 	"hash"
 	"hash/fnv"
 	"math"
-	"sync"
+
+	"github.com/chris-alexander-pop/system-design-library/pkg/concurrency"
 )
 
 // BloomFilter is a space-efficient probabilistic data structure.
@@ -22,7 +23,7 @@ type BloomFilter struct {
 	bits    []uint64 // Bit array
 	numBits uint     // Total number of bits
 	numHash uint     // Number of hash functions
-	mu      sync.RWMutex
+	mu      *concurrency.SmartRWMutex
 	count   uint64 // Approximate number of elements added
 }
 
@@ -55,6 +56,7 @@ func New(expectedElements uint, falsePositiveRate float64) *BloomFilter {
 		bits:    make([]uint64, numWords),
 		numBits: numBits,
 		numHash: numHash,
+		mu:      concurrency.NewSmartRWMutex(concurrency.MutexConfig{Name: "BloomFilter"}),
 	}
 }
 
@@ -65,6 +67,7 @@ func NewWithSize(numBits, numHash uint) *BloomFilter {
 		bits:    make([]uint64, numWords),
 		numBits: numBits,
 		numHash: numHash,
+		mu:      concurrency.NewSmartRWMutex(concurrency.MutexConfig{Name: "BloomFilter"}),
 	}
 }
 

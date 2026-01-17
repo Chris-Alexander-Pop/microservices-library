@@ -3,7 +3,8 @@ package database
 import (
 	"context"
 	"fmt"
-	"sync"
+
+	"github.com/chris-alexander-pop/system-design-library/pkg/concurrency"
 
 	"github.com/chris-alexander-pop/system-design-library/pkg/database/sharding"
 	"github.com/chris-alexander-pop/system-design-library/pkg/errors"
@@ -20,7 +21,7 @@ type Manager struct {
 	shards   map[string]interface{}
 	strategy sharding.Strategy
 	config   ManagerConfig
-	mu       sync.RWMutex
+	mu       *concurrency.SmartRWMutex
 }
 
 // NewManager creates a new database manager
@@ -32,6 +33,7 @@ func NewManager(cfg ManagerConfig, factory ConnectionFactory) (*Manager, error) 
 	m := &Manager{
 		config: cfg,
 		shards: make(map[string]interface{}),
+		mu:     concurrency.NewSmartRWMutex(concurrency.MutexConfig{Name: "DBManager"}),
 	}
 
 	// Initialize Primary

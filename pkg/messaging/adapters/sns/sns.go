@@ -30,8 +30,9 @@ package sns
 import (
 	"context"
 	"encoding/json"
-	"sync"
 	"time"
+
+	"github.com/chris-alexander-pop/system-design-library/pkg/concurrency"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -70,7 +71,7 @@ type Broker struct {
 	config   Config
 	client   *sns.Client
 	topicARN string
-	mu       sync.RWMutex
+	mu       *concurrency.SmartRWMutex
 	closed   bool
 }
 
@@ -125,6 +126,7 @@ func New(ctx context.Context, cfg Config) (*Broker, error) {
 		config:   cfg,
 		client:   client,
 		topicARN: topicARN,
+		mu:       concurrency.NewSmartRWMutex(concurrency.MutexConfig{Name: "SNSBroker"}),
 	}, nil
 }
 

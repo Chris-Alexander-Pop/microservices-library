@@ -14,8 +14,9 @@ package memory
 
 import (
 	"context"
-	"sync"
 	"time"
+
+	"github.com/chris-alexander-pop/system-design-library/pkg/concurrency"
 
 	"github.com/chris-alexander-pop/system-design-library/pkg/messaging"
 	"github.com/google/uuid"
@@ -31,13 +32,13 @@ type Config struct {
 // Broker is an in-memory message broker implementation.
 type Broker struct {
 	config Config
-	mu     sync.RWMutex
+	mu     *concurrency.SmartRWMutex
 	topics map[string]*topic
 	closed bool
 }
 
 type topic struct {
-	mu          sync.RWMutex
+	mu          *concurrency.SmartRWMutex
 	name        string
 	subscribers map[string]chan *messaging.Message // group -> channel
 }
@@ -50,6 +51,7 @@ func New(cfg Config) *Broker {
 	return &Broker{
 		config: cfg,
 		topics: make(map[string]*topic),
+		mu:     concurrency.NewSmartRWMutex(concurrency.MutexConfig{Name: "MemoryBroker"}),
 	}
 }
 
@@ -64,6 +66,7 @@ func (b *Broker) getOrCreateTopic(name string) *topic {
 	t := &topic{
 		name:        name,
 		subscribers: make(map[string]chan *messaging.Message),
+		mu:          concurrency.NewSmartRWMutex(concurrency.MutexConfig{Name: "MemoryTopic-" + name}),
 	}
 	b.topics[name] = t
 	return t
@@ -110,6 +113,7 @@ func (b *Broker) Consumer(topicName string, group string) (messaging.Consumer, e
 		topic:  t,
 		group:  group,
 		ch:     ch,
+		mu:     concurrency.NewSmartMutex(concurrency.MutexConfig{Name: "MemoryConsumer-" + group}),
 	}, nil
 }
 
@@ -195,7 +199,7 @@ type consumer struct {
 	group  string
 	ch     chan *messaging.Message
 	closed bool
-	mu     sync.Mutex
+	mu     *concurrency.SmartMutex
 }
 
 func (c *consumer) Consume(ctx context.Context, handler messaging.MessageHandler) error {

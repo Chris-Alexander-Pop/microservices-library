@@ -21,8 +21,9 @@ package rabbitmq
 
 import (
 	"context"
-	"sync"
 	"time"
+
+	"github.com/chris-alexander-pop/system-design-library/pkg/concurrency"
 
 	"github.com/chris-alexander-pop/system-design-library/pkg/messaging"
 	"github.com/google/uuid"
@@ -63,7 +64,7 @@ type Config struct {
 type Broker struct {
 	config Config
 	conn   *amqp.Connection
-	mu     sync.RWMutex
+	mu     *concurrency.SmartRWMutex
 	closed bool
 }
 
@@ -77,6 +78,7 @@ func New(cfg Config) (*Broker, error) {
 	return &Broker{
 		config: cfg,
 		conn:   conn,
+		mu:     concurrency.NewSmartRWMutex(concurrency.MutexConfig{Name: "RabbitMQBroker"}),
 	}, nil
 }
 
@@ -129,6 +131,7 @@ func (b *Broker) Producer(topic string) (messaging.Producer, error) {
 		routingKey:   topic,
 		confirms:     b.config.PublisherConfirms,
 		confirmsChan: ch.NotifyPublish(make(chan amqp.Confirmation, 1)),
+		mu:           concurrency.NewSmartMutex(concurrency.MutexConfig{Name: "RabbitMQProducer"}),
 	}, nil
 }
 
@@ -211,6 +214,7 @@ func (b *Broker) Consumer(topic string, group string) (messaging.Consumer, error
 		queue:     q.Name,
 		autoAck:   b.config.AutoAck,
 		exclusive: group == "",
+		mu:        concurrency.NewSmartMutex(concurrency.MutexConfig{Name: "RabbitMQConsumer"}),
 	}, nil
 }
 
@@ -247,7 +251,7 @@ type producer struct {
 	routingKey   string
 	confirms     bool
 	confirmsChan <-chan amqp.Confirmation
-	mu           sync.Mutex
+	mu           *concurrency.SmartMutex
 }
 
 func (p *producer) Publish(ctx context.Context, msg *messaging.Message) error {
@@ -327,7 +331,7 @@ type consumer struct {
 	queue     string
 	autoAck   bool
 	exclusive bool
-	mu        sync.Mutex
+	mu        *concurrency.SmartMutex
 	closed    bool
 }
 

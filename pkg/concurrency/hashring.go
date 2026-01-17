@@ -3,7 +3,6 @@ package concurrency
 import (
 	"hash/crc32"
 	"sort"
-	"sync"
 )
 
 // HashRing implements consistent hashing with virtual nodes.
@@ -18,7 +17,7 @@ type HashRing struct {
 	ring         []uint32            // Sorted hash values
 	hashToNode   map[uint32]string   // Hash -> node mapping
 	virtualNodes int                 // Virtual nodes per physical node
-	mu           sync.RWMutex
+	mu           *SmartRWMutex
 }
 
 // NewHashRing creates a new consistent hash ring.
@@ -34,6 +33,7 @@ func NewHashRing(virtualNodes int) *HashRing {
 		ring:         make([]uint32, 0),
 		hashToNode:   make(map[uint32]string),
 		virtualNodes: virtualNodes,
+		mu:           NewSmartRWMutex(MutexConfig{Name: "HashRing"}),
 	}
 }
 

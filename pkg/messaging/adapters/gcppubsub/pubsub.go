@@ -31,8 +31,9 @@ package gcppubsub
 
 import (
 	"context"
-	"sync"
 	"time"
+
+	"github.com/chris-alexander-pop/system-design-library/pkg/concurrency"
 
 	"cloud.google.com/go/pubsub"
 	"github.com/chris-alexander-pop/system-design-library/pkg/messaging"
@@ -83,7 +84,7 @@ type Broker struct {
 	config Config
 	client *pubsub.Client
 	topic  *pubsub.Topic
-	mu     sync.RWMutex
+	mu     *concurrency.SmartRWMutex
 	closed bool
 }
 
@@ -102,6 +103,7 @@ func New(ctx context.Context, cfg Config) (*Broker, error) {
 	broker := &Broker{
 		config: cfg,
 		client: client,
+		mu:     concurrency.NewSmartRWMutex(concurrency.MutexConfig{Name: "PubSubBroker"}),
 	}
 
 	// Get or create topic
@@ -216,6 +218,7 @@ func (b *Broker) Consumer(topic string, group string) (messaging.Consumer, error
 	return &consumer{
 		broker:       b,
 		subscription: sub,
+		mu:           concurrency.NewSmartMutex(concurrency.MutexConfig{Name: "PubSubConsumer"}),
 	}, nil
 }
 
@@ -345,7 +348,7 @@ type consumer struct {
 	broker       *Broker
 	subscription *pubsub.Subscription
 	cancel       context.CancelFunc
-	mu           sync.Mutex
+	mu           *concurrency.SmartMutex
 }
 
 func (c *consumer) Consume(ctx context.Context, handler messaging.MessageHandler) error {
