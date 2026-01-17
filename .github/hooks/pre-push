@@ -1,0 +1,85 @@
+#!/bin/bash
+#
+# Pre-push hook for system-design-library
+# This hook runs quality gates before allowing a push to the remote.
+#
+# To enable this hook:
+#   cp .github/hooks/pre-push .git/hooks/pre-push
+#   chmod +x .git/hooks/pre-push
+#
+# Or install all hooks:
+#   make install-hooks
+
+set -e
+
+echo "🔒 Running pre-push quality gates..."
+echo ""
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Track if we have failures
+FAILED=0
+
+# 1. Auto-format code
+echo "📋 Formatting code with gofmt..."
+gofmt -w .
+echo -e "${GREEN}✅ Formatting applied${NC}"
+
+# Check if formatting created any changes that need to be committed
+if ! git diff --quiet; then
+    echo -e "${YELLOW}⚠️  Formatting changed some files. These changes will be included in your push.${NC}"
+    echo "   Changed files:"
+    git diff --name-only | sed 's/^/     /'
+    echo ""
+fi
+echo ""
+
+# 2. Run go vet
+echo "📋 Running go vet..."
+if ! go vet ./... 2>&1; then
+    echo -e "${RED}❌ go vet failed${NC}"
+    FAILED=1
+else
+    echo -e "${GREEN}✅ go vet OK${NC}"
+fi
+echo ""
+
+# 3. Build check
+echo "📋 Verifying build..."
+if ! go build ./... 2>&1; then
+    echo -e "${RED}❌ Build failed${NC}"
+    FAILED=1
+else
+    echo -e "${GREEN}✅ Build OK${NC}"
+fi
+echo ""
+
+# 4. Run tests
+echo "📋 Running tests..."
+if ! go test -race ./pkg/... ./templates/... ./services/... 2>&1; then
+    echo -e "${RED}❌ Tests failed${NC}"
+    FAILED=1
+else
+    echo -e "${GREEN}✅ Tests OK${NC}"
+fi
+echo ""
+
+# Final result
+if [ $FAILED -eq 1 ]; then
+    echo -e "${RED}══════════════════════════════════════════════════${NC}"
+    echo -e "${RED}❌ Pre-push checks FAILED. Push blocked.${NC}"
+    echo -e "${RED}══════════════════════════════════════════════════${NC}"
+    echo ""
+    echo "Fix the issues above and try again."
+    echo "To skip this check (not recommended): git push --no-verify"
+    exit 1
+else
+    echo -e "${GREEN}══════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}🎉 All pre-push checks passed! Pushing...${NC}"
+    echo -e "${GREEN}══════════════════════════════════════════════════${NC}"
+    exit 0
+fi
