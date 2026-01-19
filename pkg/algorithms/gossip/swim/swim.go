@@ -1,4 +1,4 @@
-package gossip
+package swim
 
 import (
 	"math/rand"

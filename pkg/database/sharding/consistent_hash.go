@@ -1,7 +1,7 @@
 package sharding
 
 import (
-	"github.com/chris-alexander-pop/system-design-library/pkg/algorithms/consistenthash"
+	"github.com/chris-alexander-pop/system-design-library/pkg/algorithms/consistenthash/ring"
 )
 
 // Strategy defines the interface for sharding strategies
@@ -14,13 +14,13 @@ type Strategy interface {
 // ConsistentHash implements a consistent hashing ring
 // Wrapper around generic algorithm
 type ConsistentHash struct {
-	ring *consistenthash.Ring
+	ring *ring.Ring
 }
 
 // NewConsistentHash creates a new ConsistentHash strategy
 func NewConsistentHash(replicas int, shards []string) *ConsistentHash {
 	return &ConsistentHash{
-		ring: consistenthash.New(replicas, shards),
+		ring: ring.New(replicas, shards),
 	}
 }
 

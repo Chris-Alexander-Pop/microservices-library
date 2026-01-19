@@ -2,23 +2,40 @@ package ratelimit
 
 import (
 	"github.com/chris-alexander-pop/system-design-library/pkg/algorithms/ratelimit"
+	"github.com/chris-alexander-pop/system-design-library/pkg/algorithms/ratelimit/fixedwindow"
+	"github.com/chris-alexander-pop/system-design-library/pkg/algorithms/ratelimit/leakybucket"
+	"github.com/chris-alexander-pop/system-design-library/pkg/algorithms/ratelimit/slidingwindow"
+	"github.com/chris-alexander-pop/system-design-library/pkg/algorithms/ratelimit/tokenbucket"
 	"github.com/chris-alexander-pop/system-design-library/pkg/cache"
 )
 
-// Re-export types for backward compatibility
-type Strategy = ratelimit.Strategy
-type Result = ratelimit.Result
-type Limiter = ratelimit.Limiter
+// Strategy defines the rate limiting algorithm.
+type Strategy int
 
 const (
-	StrategyFixedWindow   = ratelimit.StrategyFixedWindow
-	StrategyTokenBucket   = ratelimit.StrategyTokenBucket
-	StrategyLeakyBucket   = ratelimit.StrategyLeakyBucket
-	StrategySlidingWindow = ratelimit.StrategySlidingWindow
+	StrategyTokenBucket Strategy = iota
+	StrategyLeakyBucket
+	StrategyFixedWindow
+	StrategySlidingWindow
 )
+
+// Re-export types for backward compatibility
+type Result = ratelimit.Result
+type Limiter = ratelimit.Limiter
 
 // Factory creates a limiter based on strategy
 // Delegates to algorithms package
 func New(c cache.Cache, strategy Strategy) Limiter {
-	return ratelimit.New(c, strategy)
+	switch strategy {
+	case StrategyTokenBucket:
+		return tokenbucket.NewDist(c)
+	case StrategyLeakyBucket:
+		return leakybucket.New(c)
+	case StrategyFixedWindow:
+		return fixedwindow.New(c)
+	case StrategySlidingWindow:
+		fallthrough
+	default:
+		return slidingwindow.New(c)
+	}
 }

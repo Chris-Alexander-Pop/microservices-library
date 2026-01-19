@@ -1,4 +1,4 @@
-package consistenthash
+package ring
 
 import (
 	"hash/crc32"
