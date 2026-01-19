@@ -46,11 +46,8 @@ func (h *HLLPP) Add(data []byte) {
 	}
 
 	// Dense Mode (Standard HLL)
-	idx := hash & uint64(h.m-1) // First p bits used for index if m=2^p
-	// Wait, standard HLL uses p bits for index w = hash >> (64-p).
-	// Let's stick to standard construction.
-
-	idx = hash >> (64 - h.p)
+	// Standard HLL uses p bits for index: w = hash >> (64-p)
+	idx := hash >> (64 - h.p)
 	val := hash << h.p // remaining bits
 	rank := uint8(clz(val)) + 1
 

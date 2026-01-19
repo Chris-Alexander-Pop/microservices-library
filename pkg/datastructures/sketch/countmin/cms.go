@@ -8,11 +8,10 @@ import (
 // Sketch is a Count-Min Sketch for frequency estimation.
 // It provides approximate counts with probabilistic bounds.
 type Sketch struct {
-	width  uint
-	depth  uint
-	count  uint64
-	table  [][]uint64
-	hasher func(data []byte) uint64
+	width uint
+	depth uint
+	count uint64
+	table [][]uint64
 }
 
 // New creates a new Count-Min Sketch.

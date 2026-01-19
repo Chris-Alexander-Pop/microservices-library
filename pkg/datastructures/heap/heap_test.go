@@ -16,15 +16,15 @@ func TestMinHeap(t *testing.T) {
 		t.Errorf("Expected min 3 with score 3.0, got %v with score %v", val, score)
 	}
 
-	val, score, ok = h.PopItem()
+	val, _, ok = h.PopItem()
 	if !ok || val != 3 {
 		t.Errorf("Expected 3, got %v", val)
 	}
-	val, score, ok = h.PopItem()
+	val, _, ok = h.PopItem()
 	if !ok || val != 5 {
 		t.Errorf("Expected 5, got %v", val)
 	}
-	val, score, ok = h.PopItem()
+	val, _, ok = h.PopItem()
 	if !ok || val != 7 {
 		t.Errorf("Expected 7, got %v", val)
 	}

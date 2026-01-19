@@ -30,8 +30,7 @@ type Acceptor struct {
 
 // Learner learns the agreed value.
 type Learner struct {
-	acceptedCount map[int]int
-	mu            sync.Mutex
+	// Reserved for future implementation that tracks quorum
 }
 
 // Transport abstracts network.

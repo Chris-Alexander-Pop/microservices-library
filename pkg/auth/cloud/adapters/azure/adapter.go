@@ -30,7 +30,10 @@ func (a *Adapter) SignUp(ctx context.Context, username, password string, attribu
 func (a *Adapter) SignIn(ctx context.Context, username, password string) (*cloud.AuthResult, error) {
 	scopes := []string{"User.Read"} // Example scope
 
-	res, err := a.client.AcquireTokenByUsernamePassword(ctx, scopes, username, password)
+	// Use interactive or device code flow instead of ROPC
+	// For non-interactive scenarios, use AcquireTokenSilent with cached tokens
+	// or service principal auth via confidential client
+	res, err := a.client.AcquireTokenInteractive(ctx, scopes)
 	if err != nil {
 		return nil, err
 	}

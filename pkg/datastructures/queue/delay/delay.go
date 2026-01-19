@@ -4,8 +4,6 @@ import (
 	"container/heap"
 	"sync"
 	"time"
-
-	graphHeap "github.com/chris-alexander-pop/system-design-library/pkg/datastructures/heap"
 )
 
 // Item represents a delayed task.
@@ -18,14 +16,8 @@ type Item[T any] struct {
 
 // Queue implements a thread-safe delay queue.
 // Items are dequeued only after their ReadyTime has passed.
+// Uses container/heap internally for time precision (avoiding float64 score conversion).
 type Queue[T any] struct {
-	pq *graphHeap.MinHeap[T] // Reuse our generic MinHeap? It uses float64 score.
-	// Actually, standard delay queues use time as score.
-	// Our Generic Heap implementation uses float64 score. We can convert timestamp to float64,
-	// but might lose nanosecond precision if not careful.
-	// Let's implement a specialized heap wrapper or use internal heap for this
-	// to ensure time precision and "Peek" logic for waiting.
-
 	items  []*Item[T]
 	mu     sync.Mutex
 	wakeup *sync.Cond

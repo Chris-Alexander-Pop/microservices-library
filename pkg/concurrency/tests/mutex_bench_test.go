@@ -2,11 +2,16 @@ package tests
 
 import (
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/chris-alexander-pop/system-design-library/pkg/concurrency"
 )
+
+// counter is used to prevent empty critical section warnings.
+// A minimal operation is needed inside the lock to satisfy staticcheck.
+var counter atomic.Int64
 
 // BenchmarkRawRWMutex benchmarks the standard library sync.RWMutex
 func BenchmarkRawRWMutex_Lock(b *testing.B) {
@@ -14,6 +19,7 @@ func BenchmarkRawRWMutex_Lock(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		mu.Lock()
+		counter.Add(1)
 		mu.Unlock()
 	}
 }
@@ -23,6 +29,7 @@ func BenchmarkRawRWMutex_RLock(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		mu.RLock()
+		_ = counter.Load()
 		mu.RUnlock()
 	}
 }
@@ -33,16 +40,18 @@ func BenchmarkSmartRWMutex_Default_Lock(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		mu.Lock()
+		counter.Add(1)
 		mu.Unlock()
 	}
 }
 
-// BenchmarkSmartRWMutex_Default benchmarks default mode (fast, no observability)
+// BenchmarkSmartRWMutex_Default_RLock benchmarks default mode read locks
 func BenchmarkSmartRWMutex_Default_RLock(b *testing.B) {
 	mu := concurrency.NewSmartRWMutex(concurrency.MutexConfig{Name: "bench"})
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		mu.RLock()
+		_ = counter.Load()
 		mu.RUnlock()
 	}
 }
@@ -54,6 +63,7 @@ func BenchmarkNativeRWMutex_LockUnlock(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			mu.Lock()
+			counter.Add(1)
 			mu.Unlock()
 		}
 	})
@@ -67,6 +77,7 @@ func BenchmarkSmartRWMutex_LockUnlock_FastPath(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			mu.Lock()
+			counter.Add(1)
 			mu.Unlock()
 		}
 	})
@@ -80,6 +91,7 @@ func BenchmarkSmartRWMutex_LockUnlock_DebugMode(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			mu.Lock()
+			counter.Add(1)
 			mu.Unlock()
 		}
 	})
@@ -90,6 +102,7 @@ func BenchmarkNativeRWMutex_RLockRUnlock(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			mu.RLock()
+			_ = counter.Load()
 			mu.RUnlock()
 		}
 	})
@@ -103,6 +116,7 @@ func BenchmarkSmartRWMutex_RLockRUnlock_FastPath(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			mu.RLock()
+			_ = counter.Load()
 			mu.RUnlock()
 		}
 	})
@@ -116,6 +130,7 @@ func BenchmarkSmartRWMutex_RLockRUnlock_DebugMode(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			mu.RLock()
+			_ = counter.Load()
 			mu.RUnlock()
 		}
 	})

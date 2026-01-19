@@ -26,16 +26,22 @@
 //
 // # Dependencies
 //
-// This package requires: cloud.google.com/go/pubsub
+// This package requires: cloud.google.com/go/pubsub/v2
 package gcppubsub
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/chris-alexander-pop/system-design-library/pkg/concurrency"
+	"golang.org/x/oauth2/google"
+	"google.golang.org/protobuf/types/known/durationpb"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
+	pubsubpb "cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
 	"github.com/chris-alexander-pop/system-design-library/pkg/messaging"
 	"github.com/google/uuid"
 	"google.golang.org/api/option"
@@ -79,20 +85,39 @@ type Config struct {
 	MaxRetryBackoff time.Duration `env:"PUBSUB_MAX_RETRY_BACKOFF" env-default:"600s"`
 }
 
+// topicFullName returns the fully qualified topic name.
+func topicFullName(projectID, topicID string) string {
+	return fmt.Sprintf("projects/%s/topics/%s", projectID, topicID)
+}
+
+// subscriptionFullName returns the fully qualified subscription name.
+func subscriptionFullName(projectID, subID string) string {
+	return fmt.Sprintf("projects/%s/subscriptions/%s", projectID, subID)
+}
+
 // Broker is a GCP Pub/Sub message broker implementation.
 type Broker struct {
-	config Config
-	client *pubsub.Client
-	topic  *pubsub.Topic
-	mu     *concurrency.SmartRWMutex
-	closed bool
+	config    Config
+	client    *pubsub.Client
+	publisher *pubsub.Publisher
+	topicName string
+	mu        *concurrency.SmartRWMutex
+	closed    bool
 }
 
 // New creates a new GCP Pub/Sub broker.
 func New(ctx context.Context, cfg Config) (*Broker, error) {
-	opts := []option.ClientOption{}
+	var opts []option.ClientOption
 	if cfg.CredentialsFile != "" {
-		opts = append(opts, option.WithCredentialsFile(cfg.CredentialsFile))
+		credsJSON, err := os.ReadFile(cfg.CredentialsFile)
+		if err != nil {
+			return nil, messaging.ErrConnectionFailed(err)
+		}
+		creds, err := google.CredentialsFromJSON(ctx, credsJSON, pubsub.ScopePubSub)
+		if err != nil {
+			return nil, messaging.ErrConnectionFailed(err)
+		}
+		opts = append(opts, option.WithCredentials(creds))
 	}
 
 	client, err := pubsub.NewClient(ctx, cfg.ProjectID, opts...)
@@ -108,31 +133,35 @@ func New(ctx context.Context, cfg Config) (*Broker, error) {
 
 	// Get or create topic
 	if cfg.TopicID != "" {
-		topic := client.Topic(cfg.TopicID)
-		exists, err := topic.Exists(ctx)
-		if err != nil {
-			client.Close()
-			return nil, messaging.ErrConnectionFailed(err)
-		}
+		topicName := topicFullName(cfg.ProjectID, cfg.TopicID)
 
-		if !exists {
+		// Check if topic exists using admin client
+		_, err := client.TopicAdminClient.GetTopic(ctx, &pubsubpb.GetTopicRequest{
+			Topic: topicName,
+		})
+		if err != nil {
 			if cfg.CreateTopic {
-				topic, err = client.CreateTopic(ctx, cfg.TopicID)
+				_, err = client.TopicAdminClient.CreateTopic(ctx, &pubsubpb.Topic{
+					Name: topicName,
+				})
 				if err != nil {
 					client.Close()
 					return nil, messaging.ErrConnectionFailed(err)
 				}
 			} else {
 				client.Close()
-				return nil, messaging.ErrTopicNotFound(cfg.TopicID, nil)
+				return nil, messaging.ErrTopicNotFound(cfg.TopicID, err)
 			}
 		}
 
+		// Create publisher for the topic
+		publisher := client.Publisher(topicName)
 		if cfg.EnableMessageOrdering {
-			topic.EnableMessageOrdering = true
+			publisher.EnableMessageOrdering = true
 		}
 
-		broker.topic = topic
+		broker.publisher = publisher
+		broker.topicName = topicName
 	}
 
 	return broker, nil
@@ -147,17 +176,21 @@ func (b *Broker) Producer(topic string) (messaging.Producer, error) {
 	}
 	b.mu.RUnlock()
 
-	pubsubTopic := b.topic
+	publisher := b.publisher
+	topicName := b.topicName
+
 	if topic != "" && topic != b.config.TopicID {
-		pubsubTopic = b.client.Topic(topic)
+		topicName = topicFullName(b.config.ProjectID, topic)
+		publisher = b.client.Publisher(topicName)
 		if b.config.EnableMessageOrdering {
-			pubsubTopic.EnableMessageOrdering = true
+			publisher.EnableMessageOrdering = true
 		}
 	}
 
 	return &producer{
-		broker: b,
-		topic:  pubsubTopic,
+		broker:    b,
+		publisher: publisher,
+		topicName: topicName,
 	}, nil
 }
 
@@ -179,47 +212,52 @@ func (b *Broker) Consumer(topic string, group string) (messaging.Consumer, error
 		subID = topic + "-sub-" + uuid.New().String()[:8]
 	}
 
-	sub := b.client.Subscription(subID)
-	exists, err := sub.Exists(context.Background())
-	if err != nil {
-		return nil, messaging.ErrConnectionFailed(err)
+	subName := subscriptionFullName(b.config.ProjectID, subID)
+	topicName := b.topicName
+	if topic != "" && topic != b.config.TopicID {
+		topicName = topicFullName(b.config.ProjectID, topic)
 	}
 
-	if !exists {
+	// Check if subscription exists
+	_, err := b.client.SubscriptionAdminClient.GetSubscription(context.Background(), &pubsubpb.GetSubscriptionRequest{
+		Subscription: subName,
+	})
+	if err != nil {
 		if b.config.CreateSubscription {
-			topicRef := b.topic
-			if topic != "" && topic != b.config.TopicID {
-				topicRef = b.client.Topic(topic)
-			}
-
-			subCfg := pubsub.SubscriptionConfig{
-				Topic:                 topicRef,
-				AckDeadline:           b.config.AckDeadline,
+			_, err = b.client.SubscriptionAdminClient.CreateSubscription(context.Background(), &pubsubpb.Subscription{
+				Name:                  subName,
+				Topic:                 topicName,
+				AckDeadlineSeconds:    int32(b.config.AckDeadline.Seconds()),
 				EnableMessageOrdering: b.config.EnableMessageOrdering,
-				RetryPolicy: &pubsub.RetryPolicy{
-					MinimumBackoff: b.config.MinRetryBackoff,
-					MaximumBackoff: b.config.MaxRetryBackoff,
+				RetryPolicy: &pubsubpb.RetryPolicy{
+					MinimumBackoff: toDurationPB(b.config.MinRetryBackoff),
+					MaximumBackoff: toDurationPB(b.config.MaxRetryBackoff),
 				},
-			}
-
-			sub, err = b.client.CreateSubscription(context.Background(), subID, subCfg)
+			})
 			if err != nil {
 				return nil, messaging.ErrConnectionFailed(err)
 			}
 		} else {
-			return nil, messaging.ErrTopicNotFound(subID, nil)
+			return nil, messaging.ErrTopicNotFound(subID, err)
 		}
 	}
 
-	// Configure receive settings
-	sub.ReceiveSettings.MaxOutstandingMessages = b.config.MaxOutstandingMessages
-	sub.ReceiveSettings.MaxExtension = b.config.MaxExtension
+	// Create subscriber
+	subscriber := b.client.Subscriber(subName)
+	subscriber.ReceiveSettings.MaxOutstandingMessages = b.config.MaxOutstandingMessages
+	subscriber.ReceiveSettings.MaxExtension = b.config.MaxExtension
 
 	return &consumer{
-		broker:       b,
-		subscription: sub,
-		mu:           concurrency.NewSmartMutex(concurrency.MutexConfig{Name: "PubSubConsumer"}),
+		broker:     b,
+		subscriber: subscriber,
+		subName:    subName,
+		mu:         concurrency.NewSmartMutex(concurrency.MutexConfig{Name: "PubSubConsumer"}),
 	}, nil
+}
+
+// toDurationPB converts a time.Duration to a protobuf Duration.
+func toDurationPB(d time.Duration) *durationpb.Duration {
+	return durationpb.New(d)
 }
 
 // Close shuts down the Pub/Sub broker.
@@ -232,8 +270,8 @@ func (b *Broker) Close() error {
 	}
 	b.closed = true
 
-	if b.topic != nil {
-		b.topic.Stop()
+	if b.publisher != nil {
+		b.publisher.Stop()
 	}
 
 	return b.client.Close()
@@ -248,9 +286,11 @@ func (b *Broker) Healthy(ctx context.Context) bool {
 	}
 	b.mu.RUnlock()
 
-	if b.topic != nil {
-		exists, err := b.topic.Exists(ctx)
-		return err == nil && exists
+	if b.topicName != "" {
+		_, err := b.client.TopicAdminClient.GetTopic(ctx, &pubsubpb.GetTopicRequest{
+			Topic: b.topicName,
+		})
+		return err == nil
 	}
 
 	return true
@@ -258,8 +298,9 @@ func (b *Broker) Healthy(ctx context.Context) bool {
 
 // producer is a GCP Pub/Sub producer.
 type producer struct {
-	broker *Broker
-	topic  *pubsub.Topic
+	broker    *Broker
+	publisher *pubsub.Publisher
+	topicName string
 }
 
 func (p *producer) Publish(ctx context.Context, msg *messaging.Message) error {
@@ -286,7 +327,7 @@ func (p *producer) Publish(ctx context.Context, msg *messaging.Message) error {
 		pubsubMsg.OrderingKey = string(msg.Key)
 	}
 
-	result := p.topic.Publish(ctx, pubsubMsg)
+	result := p.publisher.Publish(ctx, pubsubMsg)
 	serverID, err := result.Get(ctx)
 	if err != nil {
 		return messaging.ErrPublishFailed(err)
@@ -323,7 +364,7 @@ func (p *producer) PublishBatch(ctx context.Context, msgs []*messaging.Message) 
 			pubsubMsg.OrderingKey = string(msg.Key)
 		}
 
-		results[i] = p.topic.Publish(ctx, pubsubMsg)
+		results[i] = p.publisher.Publish(ctx, pubsubMsg)
 	}
 
 	// Wait for all publishes
@@ -339,16 +380,17 @@ func (p *producer) PublishBatch(ctx context.Context, msgs []*messaging.Message) 
 }
 
 func (p *producer) Close() error {
-	p.topic.Stop()
+	p.publisher.Stop()
 	return nil
 }
 
 // consumer is a GCP Pub/Sub consumer.
 type consumer struct {
-	broker       *Broker
-	subscription *pubsub.Subscription
-	cancel       context.CancelFunc
-	mu           *concurrency.SmartMutex
+	broker     *Broker
+	subscriber *pubsub.Subscriber
+	subName    string
+	cancel     context.CancelFunc
+	mu         *concurrency.SmartMutex
 }
 
 func (c *consumer) Consume(ctx context.Context, handler messaging.MessageHandler) error {
@@ -357,7 +399,7 @@ func (c *consumer) Consume(ctx context.Context, handler messaging.MessageHandler
 	c.cancel = cancel
 	c.mu.Unlock()
 
-	err := c.subscription.Receive(ctx, func(ctx context.Context, pubsubMsg *pubsub.Message) {
+	err := c.subscriber.Receive(ctx, func(ctx context.Context, pubsubMsg *pubsub.Message) {
 		msg := convertPubSubMessage(pubsubMsg)
 
 		err := handler(ctx, msg)
@@ -369,7 +411,7 @@ func (c *consumer) Consume(ctx context.Context, handler messaging.MessageHandler
 		pubsubMsg.Ack()
 	})
 
-	if err != nil && err != context.Canceled {
+	if err != nil && !errors.Is(err, context.Canceled) {
 		return messaging.ErrConsumeFailed(err)
 	}
 

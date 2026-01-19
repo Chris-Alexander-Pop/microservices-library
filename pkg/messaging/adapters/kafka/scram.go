@@ -3,7 +3,6 @@ package kafka
 import (
 	"crypto/sha256"
 	"crypto/sha512"
-	"hash"
 
 	"github.com/xdg-go/scram"
 )
@@ -38,6 +37,3 @@ func (c *scramClient) Step(challenge string) (string, error) {
 func (c *scramClient) Done() bool {
 	return c.ClientConversation.Done()
 }
-
-// hashFunc is a helper for creating hash functions
-type hashFunc func() hash.Hash

@@ -225,12 +225,7 @@ func (b *Broker) Consumer(topic string, group string) (messaging.Consumer, error
 		return nil, messaging.ErrConnectionFailed(err)
 	}
 
-	return &consumer{
-		broker:        b,
-		topic:         topic,
-		group:         group,
-		consumerGroup: consumerGroup,
-	}, nil
+	return newConsumer(b, topic, group, consumerGroup)
 }
 
 // Close shuts down the Kafka broker connection.

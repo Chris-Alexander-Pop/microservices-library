@@ -14,7 +14,6 @@ type RadixTree[V any] struct {
 
 type node[V any] struct {
 	path     string
-	indices  string // first char of edges (optimization)
 	children []*node[V]
 	value    V
 	isTerm   bool

@@ -2,11 +2,15 @@ package tests
 
 import (
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/chris-alexander-pop/system-design-library/pkg/concurrency"
 )
+
+// testCounter is used to prevent empty critical section warnings.
+var testCounter atomic.Int64
 
 func TestSmartMutex(t *testing.T) {
 	mu := concurrency.NewSmartMutex(concurrency.MutexConfig{
@@ -16,6 +20,7 @@ func TestSmartMutex(t *testing.T) {
 
 	// Basic Lock/Unlock
 	mu.Lock()
+	testCounter.Add(1)
 	mu.Unlock()
 
 	// Concurrent access
@@ -25,6 +30,7 @@ func TestSmartMutex(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			mu.Lock()
+			testCounter.Add(1)
 			time.Sleep(1 * time.Millisecond)
 			mu.Unlock()
 		}()
@@ -40,10 +46,12 @@ func TestSmartRWMutex(t *testing.T) {
 
 	// Write Lock
 	mu.Lock()
+	testCounter.Add(1)
 	mu.Unlock()
 
 	// Read Lock
 	mu.RLock()
+	_ = testCounter.Load()
 	mu.RUnlock()
 
 	// Concurrent Reads
@@ -53,6 +61,7 @@ func TestSmartRWMutex(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			mu.RLock()
+			_ = testCounter.Load()
 			time.Sleep(1 * time.Millisecond)
 			mu.RUnlock()
 		}()

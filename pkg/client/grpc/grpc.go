@@ -100,10 +100,10 @@ func New(ctx context.Context, cfg Config) (*grpc.ClientConn, error) {
 		)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, cfg.Timeout)
-	defer cancel()
-
-	conn, err := grpc.DialContext(ctx, cfg.Target, opts...)
+	// grpc.NewClient uses lazy connection establishment by default.
+	// Connection is established on first RPC call.
+	// For eager connection, use Connect() on the returned conn.
+	conn, err := grpc.NewClient(cfg.Target, opts...)
 	if err != nil {
 		return nil, err
 	}

@@ -18,9 +18,7 @@ type Limiter struct {
 	mu       sync.Mutex
 
 	// Sample window
-	minRTT      time.Duration
-	windowRTTs  []time.Duration
-	windowStart time.Time
+	minRTT time.Duration
 }
 
 func New(minLimit, maxLimit float64) *Limiter {

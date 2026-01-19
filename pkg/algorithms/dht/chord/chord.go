@@ -13,12 +13,11 @@ const (
 
 // Node represents a node in the Chord ring.
 type Node struct {
-	id          *big.Int
-	addr        string
-	successor   *RemoteNode
-	predecessor *RemoteNode
-	finger      []*RemoteNode // Finger table
-	mu          sync.RWMutex
+	id        *big.Int
+	addr      string
+	successor *RemoteNode
+	finger    []*RemoteNode // Finger table
+	mu        sync.RWMutex
 }
 
 type RemoteNode struct {

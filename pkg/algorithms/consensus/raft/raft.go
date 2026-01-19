@@ -31,7 +31,6 @@ type Node struct {
 	log         []LogEntry
 
 	commitIndex int
-	lastApplied int
 
 	// Leader state
 	nextIndex  map[string]int

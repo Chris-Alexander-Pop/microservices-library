@@ -6,12 +6,11 @@ import (
 
 // Histogram records values with high dynamic range and configurable precision.
 type Histogram struct {
-	counts      []int64
-	minVal      int64
-	maxVal      int64
-	total       int64
-	sigFigs     int
-	bucketCount int
+	counts  []int64
+	minVal  int64
+	maxVal  int64
+	total   int64
+	sigFigs int
 }
 
 func New(minVal, maxVal int64, sigFigs int) *Histogram {

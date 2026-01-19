@@ -69,14 +69,7 @@ func (s *Set) Union(x, y string) {
 
 // Connected checks if x and y are in the same set.
 func (s *Set) Connected(x, y string) bool {
-	// Find acquires lock, so standard public method is fine if we accept
-	// slightly loose concurrency (x could move sets between calls).
-	// But Find() locks, so it's safe individually.
-	// For strict atomicity, lock inside.
-	s.mu.RLock() // RLock ok if we don't compress? No, Find needs write lock for compression.
-	// We'll use full lock or expose internal non-compressing find?
-	// Standard Find compresses, which is mutation.
-	s.mu.RUnlock()
-
+	// Note: Find() acquires a write lock for path compression,
+	// so we call it directly without additional locking.
 	return s.Find(x) == s.Find(y)
 }

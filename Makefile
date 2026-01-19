@@ -41,7 +41,7 @@ vet:
 # Run staticcheck (install with: go install honnef.co/go/tools/cmd/staticcheck@latest)
 lint:
 	@echo "🔍 Running staticcheck..."
-	@staticcheck ./... || (echo "💡 Install staticcheck: go install honnef.co/go/tools/cmd/staticcheck@latest" && exit 1)
+	@$$(go env GOPATH)/bin/staticcheck ./... || (echo "💡 Install staticcheck: go install honnef.co/go/tools/cmd/staticcheck@latest" && exit 1)
 	@echo "✅ Staticcheck passed"
 
 # Build all packages (verifies compilation)
@@ -70,7 +70,7 @@ test-cover:
 # ============================================================================
 
 # Full quality check - run this before pushing
-check: fmt-check vet build test
+check: fmt-check vet lint build test
 	@echo ""
 	@echo "🎉 All quality gates passed! Safe to push."
 
@@ -85,8 +85,18 @@ check-quick: fmt-check vet build
 
 tidy:
 	go mod tidy
-	cd templates/rest-service && go mod tidy
-	cd templates/worker-service && go mod tidy
+	@for dir in ./pkg/*; do \
+		[ -d "$$dir" ] && (cd "$$dir" && [ -f go.mod ] && go mod tidy) || true; \
+	done
+	@for dir in ./services/*; do \
+		[ -d "$$dir" ] && (cd "$$dir" && [ -f go.mod ] && go mod tidy) || true; \
+	done
+	@for dir in ./templates/*; do \
+		[ -d "$$dir" ] && (cd "$$dir" && [ -f go.mod ] && go mod tidy) || true; \
+	done
+	@for dir in ./verification/*; do \
+		[ -d "$$dir" ] && (cd "$$dir" && [ -f go.mod ] && go mod tidy) || true; \
+	done
 
 # Install development tools
 install-tools:
