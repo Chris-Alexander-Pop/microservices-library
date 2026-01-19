@@ -10,27 +10,27 @@ import (
 type UDPHandler func(addr net.Addr, data []byte)
 
 type UDPServer struct {
-	Addr       string
+	cfg        Config
 	Handler    UDPHandler
 	BufferSize int
 }
 
-func NewUDPServer(addr string, handler UDPHandler) *UDPServer {
+func NewUDPServer(cfg Config, handler UDPHandler) *UDPServer {
 	return &UDPServer{
-		Addr:       addr,
+		cfg:        cfg,
 		Handler:    handler,
 		BufferSize: 4096, // Tunable
 	}
 }
 
 func (s *UDPServer) ListenAndServe(ctx context.Context) error {
-	pc, err := net.ListenPacket("udp", s.Addr)
+	pc, err := net.ListenPacket("udp", s.cfg.Addr)
 	if err != nil {
 		return err
 	}
 	defer pc.Close()
 
-	logger.L().InfoContext(ctx, "started udp server", "addr", s.Addr)
+	logger.L().InfoContext(ctx, "started udp server", "addr", s.cfg.Addr)
 
 	go func() {
 		<-ctx.Done()

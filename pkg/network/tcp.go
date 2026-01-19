@@ -14,6 +14,7 @@ package network
 import (
 	"context"
 	"net"
+	"time"
 
 	"github.com/chris-alexander-pop/system-design-library/pkg/logger"
 )
@@ -21,22 +22,22 @@ import (
 type TCPHandler func(conn net.Conn)
 
 type TCPServer struct {
-	Addr    string
+	cfg     Config
 	Handler TCPHandler
 }
 
-func NewTCPServer(addr string, handler TCPHandler) *TCPServer {
-	return &TCPServer{Addr: addr, Handler: handler}
+func NewTCPServer(cfg Config, handler TCPHandler) *TCPServer {
+	return &TCPServer{cfg: cfg, Handler: handler}
 }
 
 func (s *TCPServer) ListenAndServe(ctx context.Context) error {
-	l, err := net.Listen("tcp", s.Addr)
+	l, err := net.Listen("tcp", s.cfg.Addr)
 	if err != nil {
 		return err
 	}
 	defer l.Close()
 
-	logger.L().InfoContext(ctx, "started tcp server", "addr", s.Addr)
+	logger.L().InfoContext(ctx, "started tcp server", "addr", s.cfg.Addr)
 
 	go func() {
 		<-ctx.Done()
@@ -55,6 +56,8 @@ func (s *TCPServer) ListenAndServe(ctx context.Context) error {
 
 		go func(c net.Conn) {
 			defer c.Close()
+			// Set timeouts if configured? (Advanced, not in basic req but good practice)
+			_ = c.SetDeadline(time.Now().Add(s.cfg.ReadTimeout))
 			s.Handler(c)
 		}(conn)
 	}

@@ -188,14 +188,6 @@ func (h *RedactHandler) redactAttr(a slog.Attr) slog.Attr {
 		for i, sub := range groupAttrs {
 			newGroup[i] = h.redactAttr(sub)
 		}
-		return slog.Group(a.Key, (func() []interface{} { // convert Attr to interface? No, GroupValue takes Attr
-			// slog.GroupValue takes []Attr
-			res := make([]interface{}, len(newGroup))
-			for k, v := range newGroup {
-				res[k] = v
-			}
-			return res
-		})()...) // Wait, slog.GroupValue(attrs...) creates Value.
 		return slog.Attr{Key: a.Key, Value: slog.GroupValue(newGroup...)}
 	}
 
