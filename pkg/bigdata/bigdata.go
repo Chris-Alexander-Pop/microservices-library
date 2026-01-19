@@ -4,6 +4,12 @@ import (
 	"context"
 )
 
+// Config configures the bigdata package.
+type Config struct {
+	// Adapter specifies the bigdata backend (bigquery, redshift, memory).
+	Adapter string `env:"BIGDATA_ADAPTER" env-default:"memory"`
+}
+
 // Client is a generic interface for executing analytical queries.
 // It abstracts Data Warehouses like BigQuery, Redshift, Snowflake, etc.
 type Client interface {
