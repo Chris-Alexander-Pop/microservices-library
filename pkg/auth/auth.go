@@ -1,28 +1,26 @@
 // Package auth provides authentication and authorization primitives.
 //
 // Supported adapters:
-//   - Local: Username/password with bcrypt
+//   - JWT: Local JWT generation and verification
 //   - OIDC: OpenID Connect integration
 //   - Session: Server-side session management
 //   - PASETO: Secure token generation
-//
-// Features:
-//   - Unified Claims structure for identity
-//   - Token verification interface
-//   - MFA support (TOTP, WebAuthn)
-//   - Social login adapters
-//
-// Usage:
-//
-//	import "github.com/chris-alexander-pop/system-design-library/pkg/auth/adapters/oidc"
-//
-//	verifier := oidc.New(cfg)
-//	claims, err := verifier.Verify(ctx, token)
 package auth
 
 import (
 	"context"
 )
+
+// Config configures the auth package.
+type Config struct {
+	// Adapter specifies which auth adapter to use (jwt, oidc, session).
+	Adapter string `env:"AUTH_ADAPTER" env-default:"jwt"`
+
+	// JWT Config (if Adapter == jwt)
+	// Note: In a real app, this might be nested or handled by the specific adapter's New function.
+	// For simplicity with the standard pattern, we might define generic config here or let New() take a specific config.
+	// The standard says "Config struct with env tags".
+}
 
 // Claims represents the standard identity claims
 type Claims struct {
@@ -35,10 +33,10 @@ type Claims struct {
 	// Extended
 	Email    string                 `json:"email,omitempty"`
 	Role     string                 `json:"role,omitempty"` // Standardize on "role" or "groups"
-	Metadata map[string]interface{} `json:"-"`              // Catch-all?
+	Metadata map[string]interface{} `json:"-"`              // Catch-all
 }
 
-// Verifier is responsible for validating an access token / ID token
+// Verifier is responsible for validating an access token / ID token.
 type Verifier interface {
 	Verify(ctx context.Context, token string) (*Claims, error)
 }
