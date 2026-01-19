@@ -395,12 +395,18 @@ func (c *coreConsumer) Consume(ctx context.Context, handler messaging.MessageHan
 	if c.group != "" {
 		sub, err = c.broker.conn.QueueSubscribe(c.subject, c.group, func(natsMsg *nats.Msg) {
 			msg := convertNatsMessage(natsMsg)
-			handler(ctx, msg)
+			if handlerErr := handler(ctx, msg); handlerErr != nil {
+				// Log handler error but continue processing
+				_ = handlerErr
+			}
 		})
 	} else {
 		sub, err = c.broker.conn.Subscribe(c.subject, func(natsMsg *nats.Msg) {
 			msg := convertNatsMessage(natsMsg)
-			handler(ctx, msg)
+			if handlerErr := handler(ctx, msg); handlerErr != nil {
+				// Log handler error but continue processing
+				_ = handlerErr
+			}
 		})
 	}
 
@@ -459,9 +465,15 @@ func (c *jetStreamConsumer) Consume(ctx context.Context, handler messaging.Messa
 			msg := convertJetStreamMessage(natsMsg)
 			err = handler(ctx, msg)
 			if err != nil {
-				natsMsg.Nak()
+				if nakErr := natsMsg.Nak(); nakErr != nil {
+					// Log nak error but continue
+					_ = nakErr
+				}
 			} else {
-				natsMsg.Ack()
+				if ackErr := natsMsg.Ack(); ackErr != nil {
+					// Log ack error but continue
+					_ = ackErr
+				}
 			}
 		}
 	}

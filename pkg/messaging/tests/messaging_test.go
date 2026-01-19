@@ -82,12 +82,17 @@ func testPublishConsume(t *testing.T, broker messaging.Broker) {
 	defer consumeCancel()
 
 	go func() {
-		consumer.Consume(consumeCtx, func(ctx context.Context, m *messaging.Message) error {
+		if err := consumer.Consume(consumeCtx, func(ctx context.Context, m *messaging.Message) error {
 			received = m
 			wg.Done()
 			consumeCancel()
 			return nil
-		})
+		}); err != nil {
+			// Log error if consume fails (unless context canceled)
+			if consumeCtx.Err() == nil {
+				t.Logf("consume failed: %v", err)
+			}
+		}
 	}()
 
 	wg.Wait()
@@ -138,7 +143,7 @@ func testBatchPublish(t *testing.T, broker messaging.Broker) {
 	defer consumeCancel()
 
 	go func() {
-		consumer.Consume(consumeCtx, func(ctx context.Context, m *messaging.Message) error {
+		if err := consumer.Consume(consumeCtx, func(ctx context.Context, m *messaging.Message) error {
 			mu.Lock()
 			receivedCount++
 			if receivedCount >= 3 {
@@ -146,7 +151,11 @@ func testBatchPublish(t *testing.T, broker messaging.Broker) {
 			}
 			mu.Unlock()
 			return nil
-		})
+		}); err != nil {
+			if consumeCtx.Err() == nil {
+				t.Logf("consume failed: %v", err)
+			}
+		}
 	}()
 
 	<-consumeCtx.Done()
@@ -202,21 +211,29 @@ func testMultipleConsumers(t *testing.T, broker messaging.Broker) {
 	defer consumeCancel()
 
 	go func() {
-		consumer1.Consume(consumeCtx, func(ctx context.Context, m *messaging.Message) error {
+		if err := consumer1.Consume(consumeCtx, func(ctx context.Context, m *messaging.Message) error {
 			mu.Lock()
 			count1++
 			mu.Unlock()
 			return nil
-		})
+		}); err != nil {
+			if consumeCtx.Err() == nil {
+				t.Logf("consumer1 failed: %v", err)
+			}
+		}
 	}()
 
 	go func() {
-		consumer2.Consume(consumeCtx, func(ctx context.Context, m *messaging.Message) error {
+		if err := consumer2.Consume(consumeCtx, func(ctx context.Context, m *messaging.Message) error {
 			mu.Lock()
 			count2++
 			mu.Unlock()
 			return nil
-		})
+		}); err != nil {
+			if consumeCtx.Err() == nil {
+				t.Logf("consumer2 failed: %v", err)
+			}
+		}
 	}()
 
 	<-consumeCtx.Done()
@@ -270,12 +287,16 @@ func testHeaders(t *testing.T, broker messaging.Broker) {
 	defer consumeCancel()
 
 	go func() {
-		consumer.Consume(consumeCtx, func(ctx context.Context, m *messaging.Message) error {
+		if err := consumer.Consume(consumeCtx, func(ctx context.Context, m *messaging.Message) error {
 			received = m
 			wg.Done()
 			consumeCancel()
 			return nil
-		})
+		}); err != nil {
+			if consumeCtx.Err() == nil {
+				t.Logf("consume failed: %v", err)
+			}
+		}
 	}()
 
 	wg.Wait()

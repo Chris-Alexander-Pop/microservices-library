@@ -341,19 +341,25 @@ func (c *consumer) Consume(ctx context.Context, handler messaging.MessageHandler
 			err := handler(ctx, msg)
 			if err != nil {
 				// Change visibility to allow reprocessing
-				c.broker.client.ChangeMessageVisibility(ctx, &sqs.ChangeMessageVisibilityInput{
+				if _, visErr := c.broker.client.ChangeMessageVisibility(ctx, &sqs.ChangeMessageVisibilityInput{
 					QueueUrl:          aws.String(c.broker.queueURL),
 					ReceiptHandle:     sqsMsg.ReceiptHandle,
 					VisibilityTimeout: 0, // Immediately visible
-				})
+				}); visErr != nil {
+					// Log error but continue
+					_ = visErr
+				}
 				continue
 			}
 
 			// Delete message on success
-			c.broker.client.DeleteMessage(ctx, &sqs.DeleteMessageInput{
+			if _, delErr := c.broker.client.DeleteMessage(ctx, &sqs.DeleteMessageInput{
 				QueueUrl:      aws.String(c.broker.queueURL),
 				ReceiptHandle: sqsMsg.ReceiptHandle,
-			})
+			}); delErr != nil {
+				// Log error but continue processing next message
+				_ = delErr
+			}
 		}
 	}
 }

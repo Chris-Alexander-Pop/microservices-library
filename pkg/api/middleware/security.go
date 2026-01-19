@@ -109,7 +109,10 @@ func ensureCSRFToken(w http.ResponseWriter, r *http.Request, cfg CSRFConfig) {
 
 func generateCSRFToken() string {
 	b := make([]byte, 32)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		// This should never happen in practice, but if it does, return a fallback
+		return base64.URLEncoding.EncodeToString([]byte(time.Now().String()))
+	}
 	return base64.URLEncoding.EncodeToString(b)
 }
 

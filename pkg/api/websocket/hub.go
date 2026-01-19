@@ -101,8 +101,15 @@ func (c *Client) readPump() {
 		c.conn.Close()
 	}()
 	c.conn.SetReadLimit(512)
-	c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(60 * time.Second)); return nil })
+	if err := c.conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
+		logger.L().Error("failed to set read deadline", "error", err)
+	}
+	c.conn.SetPongHandler(func(string) error {
+		if err := c.conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
+			logger.L().Error("failed to set read deadline in pong handler", "error", err)
+		}
+		return nil
+	})
 	for {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
@@ -121,9 +128,14 @@ func (c *Client) writePump() {
 	for {
 		select {
 		case message, ok := <-c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if err := c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil {
+				logger.L().Error("failed to set write deadline", "error", err)
+				return
+			}
 			if !ok {
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
+					logger.L().Error("failed to write close message", "error", err)
+				}
 				return
 			}
 
@@ -131,13 +143,19 @@ func (c *Client) writePump() {
 			if err != nil {
 				return
 			}
-			w.Write(message)
+			if _, err := w.Write(message); err != nil {
+				logger.L().Error("failed to write message", "error", err)
+				return
+			}
 
 			if err := w.Close(); err != nil {
 				return
 			}
 		case <-ticker.C:
-			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if err := c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil {
+				logger.L().Error("failed to set write deadline for ping", "error", err)
+				return
+			}
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}

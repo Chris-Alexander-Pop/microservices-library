@@ -87,10 +87,9 @@ func (t *RadixTree[V]) insert(n *node[V], path string, value V) {
 					value:  value,
 					isTerm: true,
 				}
-			} else {
-				// The insertion ends exactly at the split point
-				// The 'head' logic below handles setting value on the split node
 			}
+			// If lcp == len(path), the insertion ends exactly at the split point.
+			// The 'head' logic below handles setting value on the split node.
 
 			// Update existing child to be the 'head' (split node)
 			child.path = child.path[:lcp]

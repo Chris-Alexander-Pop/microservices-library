@@ -29,7 +29,9 @@ func New(cfg Config) (*Adapter, error) {
 func (a *Adapter) Generate(userID string, role string, ttl time.Duration) (string, error) {
 	token := paseto.NewToken()
 	token.SetSubject(userID)
-	token.Set("role", role)
+	if err := token.Set("role", role); err != nil {
+		return "", errors.Internal("failed to set token role", err)
+	}
 	token.SetIssuedAt(time.Now())
 	token.SetNotBefore(time.Now())
 	token.SetExpiration(time.Now().Add(ttl))

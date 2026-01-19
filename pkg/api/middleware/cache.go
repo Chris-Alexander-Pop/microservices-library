@@ -43,7 +43,9 @@ func CacheMiddleware(c cache.Cache, ttl time.Duration) func(http.Handler) http.H
 			if err := c.Get(r.Context(), key, &cachedBody); err == nil {
 				w.Header().Set("X-Cache", "HIT")
 				w.Header().Set("Content-Type", "application/json") // Assumption!
-				w.Write(cachedBody)
+				if _, writeErr := w.Write(cachedBody); writeErr != nil {
+					logger.L().Error("failed to write cached response", "error", writeErr)
+				}
 				return
 			}
 

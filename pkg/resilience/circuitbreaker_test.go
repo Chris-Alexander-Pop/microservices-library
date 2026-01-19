@@ -25,13 +25,17 @@ func TestCircuitBreaker_StateTransitions(t *testing.T) {
 	}
 
 	// 2. Failure 1: Still Closed
-	cb.Execute(ctx, func(ctx context.Context) error { return failErr })
+	if err := cb.Execute(ctx, func(ctx context.Context) error { return failErr }); err == nil {
+		t.Error("Expected error from Execute")
+	}
 	if cb.State() != StateClosed {
 		t.Errorf("Expected state Closed, got %v", cb.State())
 	}
 
 	// 3. Failure 2: Trip to Open
-	cb.Execute(ctx, func(ctx context.Context) error { return failErr })
+	if err := cb.Execute(ctx, func(ctx context.Context) error { return failErr }); err == nil {
+		t.Error("Expected error from Execute")
+	}
 	if cb.State() != StateOpen {
 		t.Errorf("Expected state Open, got %v", cb.State())
 	}
@@ -70,7 +74,9 @@ func TestCircuitBreaker_HalfOpenFailure(t *testing.T) {
 	fail := errors.New("fail")
 
 	// Trip to Open
-	cb.Execute(ctx, func(ctx context.Context) error { return fail })
+	if err := cb.Execute(ctx, func(ctx context.Context) error { return fail }); err == nil {
+		t.Error("Expected error from Execute")
+	}
 	if cb.State() != StateOpen {
 		t.Fatalf("Failed to open circuit")
 	}
@@ -79,7 +85,9 @@ func TestCircuitBreaker_HalfOpenFailure(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Execute failure in Half-Open -> Trip back to Open immediately
-	cb.Execute(ctx, func(ctx context.Context) error { return fail })
+	if err := cb.Execute(ctx, func(ctx context.Context) error { return fail }); err == nil {
+		t.Error("Expected error from Execute")
+	}
 
 	if cb.State() != StateOpen {
 		t.Errorf("Expected state Open after half-open failure, got %v", cb.State())

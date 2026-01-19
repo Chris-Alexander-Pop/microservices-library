@@ -56,7 +56,7 @@ build:
 
 test:
 	@echo "🧪 Running tests..."
-	@go test -race ./pkg/... ./templates/... ./services/...
+	@go list ./... | grep -E "pkg|templates|services" | xargs -r go test -race
 	@echo "✅ All tests passed"
 
 test-cover:

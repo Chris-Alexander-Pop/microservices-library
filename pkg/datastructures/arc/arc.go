@@ -76,9 +76,7 @@ func (c *Cache[K, V]) Set(key K, value V) {
 	if exists && ent.listID == 3 {
 		// Adapt p
 		delta := 1
-		if c.b1.Len() >= c.b2.Len() {
-			delta = 1
-		} else {
+		if c.b1.Len() < c.b2.Len() {
 			delta = c.b2.Len() / c.b1.Len()
 		}
 		c.p = min(c.p+delta, c.capacity)
@@ -98,9 +96,7 @@ func (c *Cache[K, V]) Set(key K, value V) {
 	if exists && ent.listID == 4 {
 		// Adapt p
 		delta := 1
-		if c.b2.Len() >= c.b1.Len() {
-			delta = 1
-		} else {
+		if c.b2.Len() < c.b1.Len() {
 			delta = c.b1.Len() / c.b2.Len()
 		}
 		c.p = max(c.p-delta, 0)

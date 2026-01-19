@@ -40,17 +40,6 @@ func New(ctx context.Context, cfg blob.Config) (*Store, error) {
 		)))
 	}
 
-	if cfg.Endpoint != "" {
-		// Custom endpoint resolver for MinIO / Localstack
-		// Note: In AWS SDK v2 this is slightly different depending on version,
-		// but typically handled via EndpointResolverWithOptions in service config
-		// or BaseEndpoint in AWS Config.
-		// For simplicity, we'll assume standard AWS unless endpoint is set.
-		// Actually, config.WithBaseEndpoint is available in newer versions.
-		// If not, we handle it in service client creation.
-		// Let's assume we handle it in client helper.
-	}
-
 	awsCfg, err := config.LoadDefaultConfig(ctx, opts...)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load aws config")

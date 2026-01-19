@@ -75,12 +75,18 @@ func NewRedactor(cfg RedactorConfig) *Redactor {
 	}
 
 	for name, pattern := range defaultPatterns {
-		r.AddPattern(name, pattern, "")
+		if err := r.AddPattern(name, pattern, ""); err != nil {
+			// Skip patterns that fail to compile
+			continue
+		}
 	}
 
 	// Add custom patterns
 	for name, pattern := range cfg.CustomPatterns {
-		r.AddPattern(name, pattern, "")
+		if err := r.AddPattern(name, pattern, ""); err != nil {
+			// Skip patterns that fail to compile
+			continue
+		}
 	}
 
 	return r

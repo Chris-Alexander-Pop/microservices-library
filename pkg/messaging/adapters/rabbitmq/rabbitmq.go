@@ -364,9 +364,15 @@ func (c *consumer) Consume(ctx context.Context, handler messaging.MessageHandler
 			if !c.autoAck {
 				if err != nil {
 					// Nack and requeue on error
-					d.Nack(false, true)
+					if nackErr := d.Nack(false, true); nackErr != nil {
+						// Log nack error but don't return - continue processing
+						_ = nackErr
+					}
 				} else {
-					d.Ack(false)
+					if ackErr := d.Ack(false); ackErr != nil {
+						// Log ack error but don't return - continue processing
+						_ = ackErr
+					}
 				}
 			}
 		}

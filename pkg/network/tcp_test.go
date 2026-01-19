@@ -22,7 +22,9 @@ func TestTCPServer(t *testing.T) {
 	handler := func(conn net.Conn) {
 		buf := make([]byte, 1024)
 		n, _ := conn.Read(buf)
-		conn.Write(buf[:n]) // Echo
+		if _, err := conn.Write(buf[:n]); err != nil {
+			t.Errorf("failed to write echo: %v", err)
+		}
 		done <- true
 	}
 
@@ -33,7 +35,12 @@ func TestTCPServer(t *testing.T) {
 
 	// Start server in background
 	go func() {
-		server.ListenAndServe(ctx)
+		if err := server.ListenAndServe(ctx); err != nil {
+			// Context cancellation is expected
+			if ctx.Err() == nil {
+				t.Logf("server failed: %v", err)
+			}
+		}
 	}()
 	time.Sleep(100 * time.Millisecond) // Wait for startup
 
@@ -45,7 +52,9 @@ func TestTCPServer(t *testing.T) {
 	defer conn.Close()
 
 	msg := "hello"
-	conn.Write([]byte(msg))
+	if _, err := conn.Write([]byte(msg)); err != nil {
+		t.Fatalf("failed to write message: %v", err)
+	}
 
 	select {
 	case <-done:

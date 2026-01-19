@@ -154,7 +154,10 @@ func CircuitBreakerStreamInterceptor(cb *resilience.CircuitBreaker) grpc.StreamC
 		stream, err := streamer(ctx, desc, cc, method, opts...)
 		if err != nil {
 			if shouldCountAsFailure(err) {
-				cb.Execute(ctx, func(ctx context.Context) error { return err })
+				if cbErr := cb.Execute(ctx, func(ctx context.Context) error { return err }); cbErr != nil {
+					// Log circuit breaker error but return original error
+					logger.L().Debug("circuit breaker recorded failure", "error", cbErr)
+				}
 			}
 			return nil, err
 		}

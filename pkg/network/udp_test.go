@@ -28,7 +28,11 @@ func TestUDPServer(t *testing.T) {
 	defer cancel()
 
 	go func() {
-		server.ListenAndServe(ctx)
+		if err := server.ListenAndServe(ctx); err != nil {
+			if ctx.Err() == nil {
+				t.Logf("server failed: %v", err)
+			}
+		}
 	}()
 	time.Sleep(100 * time.Millisecond)
 
@@ -40,7 +44,9 @@ func TestUDPServer(t *testing.T) {
 	defer c.Close()
 
 	msg := "packet"
-	c.Write([]byte(msg))
+	if _, err := c.Write([]byte(msg)); err != nil {
+		t.Fatalf("failed to write packet: %v", err)
+	}
 
 	select {
 	case received := <-done:

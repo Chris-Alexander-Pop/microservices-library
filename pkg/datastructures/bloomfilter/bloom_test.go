@@ -19,6 +19,6 @@ func TestBloomFilter(t *testing.T) {
 	}
 	if bf.Contains([]byte("cherry")) {
 		// False positives are possible but unlikely with these params
-		// t.Log("False positive occurred for cherry")
+		t.Log("False positive occurred for cherry")
 	}
 }

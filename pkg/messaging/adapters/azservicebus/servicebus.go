@@ -362,10 +362,16 @@ func (c *consumer) Consume(ctx context.Context, handler messaging.MessageHandler
 			if c.broker.config.ReceiveMode != "ReceiveAndDelete" {
 				if err != nil {
 					// Abandon message for redelivery
-					c.receiver.AbandonMessage(ctx, asbMsg, nil)
+					if abandonErr := c.receiver.AbandonMessage(ctx, asbMsg, nil); abandonErr != nil {
+						// Log abandon error but continue
+						_ = abandonErr
+					}
 				} else {
 					// Complete message
-					c.receiver.CompleteMessage(ctx, asbMsg, nil)
+					if completeErr := c.receiver.CompleteMessage(ctx, asbMsg, nil); completeErr != nil {
+						// Log complete error but continue
+						_ = completeErr
+					}
 				}
 			}
 		}

@@ -102,16 +102,28 @@ func (k *KyberKEM) Encapsulate(publicKey []byte) (sharedSecret, ciphertext []byt
 	// For placeholder: derive ciphertext from seed and public key
 	ciphertext = make([]byte, k.ciphertextSize)
 	h := sha3.NewSHAKE256()
-	h.Write(seed)
-	h.Write(publicKey)
-	h.Read(ciphertext)
+	if _, err := h.Write(seed); err != nil {
+		return nil, nil, err
+	}
+	if _, err := h.Write(publicKey); err != nil {
+		return nil, nil, err
+	}
+	if _, err := h.Read(ciphertext); err != nil {
+		return nil, nil, err
+	}
 
 	// Derive shared secret
 	sharedSecret = make([]byte, k.sharedSecretSize)
 	h.Reset()
-	h.Write(seed)
-	h.Write(ciphertext)
-	h.Read(sharedSecret)
+	if _, err := h.Write(seed); err != nil {
+		return nil, nil, err
+	}
+	if _, err := h.Write(ciphertext); err != nil {
+		return nil, nil, err
+	}
+	if _, err := h.Read(sharedSecret); err != nil {
+		return nil, nil, err
+	}
 
 	return sharedSecret, ciphertext, nil
 }
@@ -130,9 +142,15 @@ func (k *KyberKEM) Decapsulate(privateKey, ciphertext []byte) (sharedSecret []by
 	// For placeholder: derive from private key and ciphertext
 	sharedSecret = make([]byte, k.sharedSecretSize)
 	h := sha3.NewSHAKE256()
-	h.Write(privateKey)
-	h.Write(ciphertext)
-	h.Read(sharedSecret)
+	if _, err := h.Write(privateKey); err != nil {
+		return nil, err
+	}
+	if _, err := h.Write(ciphertext); err != nil {
+		return nil, err
+	}
+	if _, err := h.Read(sharedSecret); err != nil {
+		return nil, err
+	}
 
 	return sharedSecret, nil
 }

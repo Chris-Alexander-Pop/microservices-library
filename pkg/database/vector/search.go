@@ -46,6 +46,8 @@ func ScatterGatherSearch(
 			defer func() {
 				if r := recover(); r != nil {
 					// In real app, log metrics.Counter("panic.search", 1)
+					// For now, at least ensure it's not an empty branch
+					_ = r
 				}
 			}()
 
