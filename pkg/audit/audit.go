@@ -1,9 +1,3 @@
-// Package audit provides structured audit logging for compliance and security.
-//
-// This package includes:
-//   - Structured audit events (SIEM-ready)
-//   - Event types for common operations
-//   - PII redaction utilities
 package audit
 
 import (
@@ -14,6 +8,91 @@ import (
 
 	"github.com/chris-alexander-pop/system-design-library/pkg/logger"
 )
+
+// Config configures the audit package.
+type Config struct {
+	// Enabled toggles audit logging on/off.
+	Enabled bool `env:"AUDIT_ENABLED" env-default:"true"`
+
+	// RedactConfig for handling sensitive data.
+	Redact RedactorConfig
+}
+
+// Auditor defines the interface for audit logging.
+type Auditor interface {
+	// Log records an audit event.
+	Log(ctx context.Context, event Event)
+
+	// LogWithBuilder starts a fluent event builder.
+	LogWithBuilder(ctx context.Context, eventType EventType) *EventBuilder
+}
+
+// Logger handles audit logging.
+type Logger struct {
+	log      *slog.Logger
+	redactor *Redactor
+	config   Config
+}
+
+// New creates a new audit logger.
+func New(cfg Config) *Logger {
+	// If Redactor is needed, it should be configured
+	var r *Redactor
+	if cfg.Redact.Replacement != "" || len(cfg.Redact.CustomPatterns) > 0 {
+		r = NewRedactor(cfg.Redact)
+	} else {
+		// Default redactor
+		r = NewRedactor(DefaultRedactorConfig())
+	}
+
+	return &Logger{
+		log:      logger.L(),
+		redactor: r,
+		config:   cfg,
+	}
+}
+
+// Log records an audit event.
+func (l *Logger) Log(ctx context.Context, event Event) {
+	if !l.config.Enabled {
+		return
+	}
+
+	if event.Timestamp.IsZero() {
+		event.Timestamp = time.Now().UTC()
+	}
+
+	// Redact sensitive data
+	if l.redactor != nil {
+		event = l.redactor.RedactEvent(event)
+	}
+
+	// Convert to JSON for structured logging
+	// In a real system, this might send to an async queue (Kafka/SQS)
+	// For this library, we log structured to stdout
+	data, _ := json.Marshal(event)
+
+	l.log.InfoContext(ctx, "audit",
+		"event", string(data),
+		"event_type", string(event.EventType),
+		"outcome", string(event.Outcome),
+		"actor_id", event.ActorID,
+		"target_id", event.TargetID,
+	)
+}
+
+// LogWithBuilder provides a fluent interface for building audit events.
+func (l *Logger) LogWithBuilder(ctx context.Context, eventType EventType) *EventBuilder {
+	return &EventBuilder{
+		logger: l,
+		ctx:    ctx,
+		event: Event{
+			Timestamp: time.Now().UTC(),
+			EventType: eventType,
+			Outcome:   OutcomeSuccess,
+		},
+	}
+}
 
 // EventType categorizes audit events.
 type EventType string
@@ -96,56 +175,6 @@ type Event struct {
 	// Error details (for failures)
 	ErrorCode    string `json:"error_code,omitempty"`
 	ErrorMessage string `json:"error_message,omitempty"`
-}
-
-// Logger handles audit logging.
-type Logger struct {
-	log      *slog.Logger
-	redactor *Redactor
-}
-
-// NewLogger creates a new audit logger.
-func NewLogger(redactor *Redactor) *Logger {
-	return &Logger{
-		log:      logger.L(),
-		redactor: redactor,
-	}
-}
-
-// Log records an audit event.
-func (l *Logger) Log(ctx context.Context, event Event) {
-	if event.Timestamp.IsZero() {
-		event.Timestamp = time.Now().UTC()
-	}
-
-	// Redact sensitive data
-	if l.redactor != nil {
-		event = l.redactor.RedactEvent(event)
-	}
-
-	// Convert to JSON for structured logging
-	data, _ := json.Marshal(event)
-
-	l.log.InfoContext(ctx, "audit",
-		"event", string(data),
-		"event_type", string(event.EventType),
-		"outcome", string(event.Outcome),
-		"actor_id", event.ActorID,
-		"target_id", event.TargetID,
-	)
-}
-
-// LogWithBuilder provides a fluent interface for building audit events.
-func (l *Logger) LogWithBuilder(ctx context.Context, eventType EventType) *EventBuilder {
-	return &EventBuilder{
-		logger: l,
-		ctx:    ctx,
-		event: Event{
-			Timestamp: time.Now().UTC(),
-			EventType: eventType,
-			Outcome:   OutcomeSuccess,
-		},
-	}
 }
 
 // EventBuilder provides a fluent interface for building audit events.

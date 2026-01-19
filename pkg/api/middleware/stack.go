@@ -33,8 +33,7 @@ type Config struct {
 	CircuitBreakerConfig  resilience.CircuitBreakerConfig
 
 	// Audit Logging
-	AuditEnabled  bool
-	AuditRedactor *audit.Redactor
+	AuditConfig audit.Config
 }
 
 // DefaultConfig returns a secure default configuration.
@@ -48,8 +47,10 @@ func DefaultConfig() Config {
 		RateLimitEnabled:      true,
 		RateLimitPerMin:       100,
 		CircuitBreakerEnabled: false,
-		AuditEnabled:          true,
-		AuditRedactor:         audit.NewRedactor(audit.DefaultRedactorConfig()),
+		AuditConfig: audit.Config{
+			Enabled: true,
+			Redact:  audit.DefaultRedactorConfig(),
+		},
 	}
 }
 
@@ -59,8 +60,8 @@ func SecurityStack(cfg Config) func(http.Handler) http.Handler {
 		h := handler
 
 		// Innermost: audit logging
-		if cfg.AuditEnabled {
-			h = AuditMiddleware(audit.NewLogger(cfg.AuditRedactor))(h)
+		if cfg.AuditConfig.Enabled {
+			h = AuditMiddleware(audit.New(cfg.AuditConfig))(h)
 		}
 
 		// Circuit breaker
