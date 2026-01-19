@@ -97,33 +97,28 @@ func (h *Hasher) hashArgon2id(password string) (string, error) {
 }
 
 func (h *Hasher) verifyArgon2id(password, encoded string) (bool, error) {
-	var memory, time uint32
-	var threads uint8
-	var saltB64, hashB64 string
-
-	_, err := fmt.Sscanf(
-		encoded,
-		"$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s",
-		&memory, &time, &threads, &saltB64, &hashB64,
-	)
-	if err != nil {
-		return false, err
-	}
-
-	// Split the last part to get just the salt (without the hash that got concatenated)
+	// Parse: $argon2id$v=19$m=65536,t=1,p=4$SALT$HASH
 	parts := splitArgon2Hash(encoded)
 	if len(parts) != 5 {
 		return false, errors.InvalidArgument("invalid argon2id hash format", nil)
 	}
 
+	var memory, time uint32
+	var threads uint8
+
+	_, err := fmt.Sscanf(parts[2], "m=%d,t=%d,p=%d", &memory, &time, &threads)
+	if err != nil {
+		return false, errors.InvalidArgument("failed to parse argon2 parameters", err)
+	}
+
 	salt, err := base64.RawStdEncoding.DecodeString(parts[3])
 	if err != nil {
-		return false, err
+		return false, errors.InvalidArgument("invalid salt encoding", err)
 	}
 
 	expectedHash, err := base64.RawStdEncoding.DecodeString(parts[4])
 	if err != nil {
-		return false, err
+		return false, errors.InvalidArgument("invalid hash encoding", err)
 	}
 
 	computedHash := argon2.IDKey(
