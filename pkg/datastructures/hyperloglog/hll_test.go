@@ -1,6 +1,7 @@
 package hyperloglog
 
 import (
+	"fmt"
 	"math"
 	"testing"
 )
@@ -24,7 +25,7 @@ func TestHyperLogLog(t *testing.T) {
 
 		// Add unique elements
 		for i := 0; i < uniqueCount; i++ {
-			hll.AddString(string(rune(i)))
+			hll.AddString(fmt.Sprintf("key-%d", i))
 		}
 
 		count := hll.Count()
@@ -33,7 +34,7 @@ func TestHyperLogLog(t *testing.T) {
 		// Expected error for p=14 is ~0.8%, but variance can be high for small datasets.
 		// Relaxing to 5% for stability.
 		if errorRate > 0.05 {
-			t.Errorf("Error rate %.4f is too high (expected < 0.05)", errorRate)
+			t.Errorf("Error rate %.4f is too high (expected < 0.05). Got count: %d, Expected: %d", errorRate, count, uniqueCount)
 		}
 	})
 

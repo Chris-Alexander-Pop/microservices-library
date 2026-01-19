@@ -151,7 +151,16 @@ func (hll *HyperLogLog) Clear() {
 func hashBytes(data []byte) uint64 {
 	h := fnv.New64a()
 	h.Write(data)
-	return h.Sum64()
+	return mix(h.Sum64())
+}
+
+func mix(h uint64) uint64 {
+	h ^= h >> 33
+	h *= 0xff51afd7ed558ccd
+	h ^= h >> 33
+	h *= 0xc4ceb9fe1a85ec53
+	h ^= h >> 33
+	return h
 }
 
 // countLeadingZeros counts leading zeros in a 64-bit integer.
