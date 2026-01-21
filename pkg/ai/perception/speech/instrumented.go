@@ -2,7 +2,6 @@ package speech
 
 import (
 	"context"
-	"time"
 
 	"github.com/chris-alexander-pop/system-design-library/pkg/logger"
 	"go.opentelemetry.io/otel"
@@ -11,7 +10,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// InstrumentedSpeechClient wraps a SpeechClient with telemetry.
+// InstrumentedSpeechClient wraps SpeechClient with observability.
 type InstrumentedSpeechClient struct {
 	next   SpeechClient
 	tracer trace.Tracer
@@ -25,61 +24,41 @@ func NewInstrumentedSpeechClient(next SpeechClient) *InstrumentedSpeechClient {
 	}
 }
 
+// SpeechToText instruments SpeechToText.
 func (c *InstrumentedSpeechClient) SpeechToText(ctx context.Context, audio []byte) (string, error) {
-	ctx, span := c.tracer.Start(ctx, "SpeechClient.SpeechToText",
-		trace.WithAttributes(attribute.Int("speech.audio_size", len(audio))),
-	)
+	ctx, span := c.tracer.Start(ctx, "speech.SpeechToText", trace.WithAttributes(
+		attribute.Int("audio.size", len(audio)),
+	))
 	defer span.End()
 
-	start := time.Now()
-	text, err := c.next.SpeechToText(ctx, audio)
-	duration := time.Since(start)
+	logger.L().InfoContext(ctx, "speech to text", "audio_size", len(audio))
 
+	text, err := c.next.SpeechToText(ctx, audio)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		logger.L().ErrorContext(ctx, "stt failed",
-			"error", err,
-			"duration", duration.String(),
-		)
-		return "", err
+		logger.L().ErrorContext(ctx, "speech to text failed", "error", err)
 	}
 
-	logger.L().InfoContext(ctx, "stt completed",
-		"text_len", len(text),
-		"duration", duration.String(),
-	)
-
-	return text, nil
+	return text, err
 }
 
+// TextToSpeech instruments TextToSpeech.
 func (c *InstrumentedSpeechClient) TextToSpeech(ctx context.Context, text string, format AudioFormat) ([]byte, error) {
-	ctx, span := c.tracer.Start(ctx, "SpeechClient.TextToSpeech",
-		trace.WithAttributes(
-			attribute.Int("speech.text_len", len(text)),
-			attribute.String("speech.format", string(format)),
-		),
-	)
+	ctx, span := c.tracer.Start(ctx, "speech.TextToSpeech", trace.WithAttributes(
+		attribute.Int("text.length", len(text)),
+		attribute.String("format", string(format)),
+	))
 	defer span.End()
 
-	start := time.Now()
-	audio, err := c.next.TextToSpeech(ctx, text, format)
-	duration := time.Since(start)
+	logger.L().InfoContext(ctx, "text to speech", "text_length", len(text), "format", format)
 
+	audio, err := c.next.TextToSpeech(ctx, text, format)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		logger.L().ErrorContext(ctx, "tts failed",
-			"error", err,
-			"duration", duration.String(),
-		)
-		return nil, err
+		logger.L().ErrorContext(ctx, "text to speech failed", "error", err)
 	}
 
-	logger.L().InfoContext(ctx, "tts completed",
-		"audio_size", len(audio),
-		"duration", duration.String(),
-	)
-
-	return audio, nil
+	return audio, err
 }

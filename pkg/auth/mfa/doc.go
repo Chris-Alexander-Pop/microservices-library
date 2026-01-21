@@ -1,5 +1,13 @@
 // Package mfa provides Multi-Factor Authentication capabilities.
 //
-// It supports Time-based One-Time Passwords (TOTP) and Recovery Codes.
-// The package is designed to be extensible to support SMS, Email, and Push notification based MFA.
+// This package supports various MFA methods including:
+//   - TOTP (Time-based One-Time Password)
+//   - SMS/Email OTP (via communication package)
+//   - Recovery codes
+//
+// Usage:
+//
+//	mfaService := memory.New()
+//	qrCode, secret, err := mfaService.Enroll(ctx, userID, mfa.TOTP)
+//	err = mfaService.Verify(ctx, userID, code)
 package mfa
