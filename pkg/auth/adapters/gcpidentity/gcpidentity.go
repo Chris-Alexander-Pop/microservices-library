@@ -33,9 +33,7 @@ type Adapter struct {
 
 // New creates a new GCP Identity adapter.
 func New(ctx context.Context, cfg Config) (*Adapter, error) {
-	opts := []option.ClientOption{
-		option.WithProjectID(cfg.ProjectID),
-	}
+	var opts []option.ClientOption
 	if cfg.CredentialsFile != "" {
 		opts = append(opts, option.WithCredentialsFile(cfg.CredentialsFile))
 	}
@@ -61,7 +59,7 @@ func New(ctx context.Context, cfg Config) (*Adapter, error) {
 // We must use the Firebase Auth REST API for this.
 func (a *Adapter) Login(ctx context.Context, username, password string) (*pkgauth.Claims, error) {
 	if a.apiKey == "" {
-		return nil, errors.PreconditionFailed("api key required for gcp login", nil)
+		return nil, errors.InvalidArgument("api key required for gcp login", nil)
 	}
 
 	// In a complete implementation, this would call the Identity Toolkit API
@@ -72,7 +70,7 @@ func (a *Adapter) Login(ctx context.Context, username, password string) (*pkgaut
 	// For compliance with the interface, we'll mark this as not implemented or Stub it
 	// if the user provided API key is set, we could technically do it.
 
-	return nil, errors.NotImplemented("gcp/firebase password login requires client sdk or rest api call", nil)
+	return nil, errors.Unimplemented("gcp/firebase password login requires client sdk or rest api call", nil)
 }
 
 // Verify validates a Firebase ID token.

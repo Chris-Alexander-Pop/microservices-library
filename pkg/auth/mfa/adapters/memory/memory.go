@@ -91,7 +91,7 @@ func (p *MFAProvider) Verify(ctx context.Context, userID, code string) (bool, er
 		return false, pkgerrors.NotFound("mfa enrollment not found", nil)
 	}
 	if !enrollment.Enabled {
-		return false, pkgerrors.PreconditionFailed("mfa not enabled", nil)
+		return false, pkgerrors.Forbidden("mfa not enabled", nil)
 	}
 
 	totp := otp.NewTOTP(p.totpConfig)
@@ -115,7 +115,7 @@ func (p *MFAProvider) Recover(ctx context.Context, userID, code string) (bool, e
 		return false, pkgerrors.NotFound("mfa enrollment not found", nil)
 	}
 	if !enrollment.Enabled {
-		return false, pkgerrors.PreconditionFailed("mfa not enabled", nil)
+		return false, pkgerrors.Forbidden("mfa not enabled", nil)
 	}
 
 	// Check recovery codes
@@ -126,7 +126,7 @@ func (p *MFAProvider) Recover(ctx context.Context, userID, code string) (bool, e
 		// Since we recreate the set from hashes every time, we need a way to mark them as used in the source.
 
 		// Let's implement a simple check loop here instead of using the Set logic which is transient
-		normalized := code // simplified
+		// Let's implement a simple check loop here instead of using the Set logic which is transient
 
 		// This uses the RecoveryCodeSet logic, but we need to update our stored hashes.
 		// Actually, RecoveryCodeSet isn't quite right for "hashed" storage if it doesn't support marking them as used permanently

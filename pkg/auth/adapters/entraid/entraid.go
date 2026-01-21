@@ -18,7 +18,7 @@ type Config struct {
 
 // Adapter implements auth.IdentityProvider and auth.Verifier for EntraID.
 type Adapter struct {
-	client *public.Client
+	client public.Client
 }
 
 // New creates a new EntraID adapter.
@@ -67,5 +67,5 @@ func (a *Adapter) Verify(ctx context.Context, token string) (*pkgauth.Claims, er
 	// we will stub this or use a generic JWT validation if keys were provided.
 
 	// Return stub for now to satisfy interface.
-	return nil, errors.NotImplemented("entraid token verification not implemented", nil)
+	return nil, errors.Unimplemented("entraid token verification not implemented", nil)
 }

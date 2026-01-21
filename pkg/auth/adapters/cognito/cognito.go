@@ -91,5 +91,5 @@ func (a *Adapter) Verify(ctx context.Context, token string) (*auth.Claims, error
 	// verifier := provider.Verifier(&oidc.Config{ClientID: a.clientID})
 	// idToken, err := verifier.Verify(ctx, token)
 
-	return nil, errors.NotImplemented("cognito token verification not yet implemented", nil)
+	return nil, errors.Unimplemented("cognito token verification not yet implemented", nil)
 }
