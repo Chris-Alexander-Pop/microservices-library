@@ -1,4 +1,4 @@
 // Package tests provides functionality for tests.
 //
 // TODO: Add detailed documentation.
-package bigdata_test
+package bigdata

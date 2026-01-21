@@ -1,4 +1,4 @@
-package bigdata_test
+package bigdata
 
 import (
 	"context"
