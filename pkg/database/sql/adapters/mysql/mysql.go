@@ -21,12 +21,7 @@ func New(cfg sql.Config) (*gorm.DB, error) {
 	tlsParam := "false"
 
 	// Load TLS Config
-	tlsConfig, err := database.LoadTLSConfig(database.Config{
-		SSLMode:     cfg.SSLMode,
-		SSLCert:     cfg.SSLCert,
-		SSLKey:      cfg.SSLKey,
-		SSLRootCert: cfg.SSLRootCert,
-	})
+	tlsConfig, err := database.LoadTLSConfig(cfg.SSLMode, cfg.SSLRootCert, cfg.SSLCert, cfg.SSLKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load tls config")
 	}

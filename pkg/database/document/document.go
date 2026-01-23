@@ -34,6 +34,10 @@ type Config struct {
 
 	// ConsistencyLevel: eventual, strong, session (backend specific).
 	ConsistencyLevel string `env:"DOC_CONSISTENCY" env-default:"strong"`
+
+	// Connection Pool Settings
+	MaxOpenConns int `env:"DOC_MAX_OPEN_CONNS" env-default:"10"`
+	MaxIdleConns int `env:"DOC_MAX_IDLE_CONNS" env-default:"5"`
 }
 
 // Interface defines the standard document database methods.

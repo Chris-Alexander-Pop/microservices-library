@@ -4,12 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/chris-alexander-pop/system-design-library/pkg/database"
 	"github.com/chris-alexander-pop/system-design-library/pkg/database/introspection"
 	"github.com/chris-alexander-pop/system-design-library/pkg/database/ops"
+	"github.com/chris-alexander-pop/system-design-library/pkg/database/sql"
 	"github.com/chris-alexander-pop/system-design-library/pkg/database/transfer"
 	"github.com/chris-alexander-pop/system-design-library/pkg/test"
-	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
@@ -29,11 +28,10 @@ type User struct {
 }
 
 func (s *OpsSuite) TestBulkOps() {
-	cfg := database.Config{Name: "bulk_ops_test"}
-	// Factory returns interface{}, need assertion
-	val, err := SqliteFactory(cfg)
+	cfg := sql.Config{Name: "bulk_ops_test"}
+	// Factory returns *gorm.DB directly now
+	db, err := SqliteFactory(cfg)
 	s.Require().NoError(err)
-	db := val.(*gorm.DB)
 
 	s.Require().NoError(db.AutoMigrate(&User{}))
 
@@ -64,10 +62,9 @@ func (s *OpsSuite) TestBulkOps() {
 
 	// 3. Transfer (Copy Table)
 	// Create another DB
-	destCfg := database.Config{Name: "bulk_ops_dest"}
-	val2, err := SqliteFactory(destCfg)
+	destCfg := sql.Config{Name: "bulk_ops_dest"}
+	destDB, err := SqliteFactory(destCfg)
 	s.Require().NoError(err)
-	destDB := val2.(*gorm.DB)
 
 	// Copy users from db -> destDB
 	err = transfer.CopyTable(ctx, db, destDB, &User{}, transfer.TransferOptions{
