@@ -113,19 +113,19 @@
 ### Database
 | Package | Status | Enables Services | Description |
 |---------|--------|------------------|-------------|
-| `pkg/database/timeseries` | ❌ | telemetry | Time-series Interface |
-| `pkg/database/timeseries/adapters/timestream`| ❌ | telemetry | AWS Timestream Adapter |
-| `pkg/database/timeseries/adapters/influxdb` | ❌ | telemetry | InfluxDB Adapter |
-| `pkg/database/document` | ❌ | cms | Document DB Interface |
-| `pkg/database/graph` | ❌ | recommendation | Graph DB Interface |
-| `pkg/database/adapters/dynamodb` | ❌ | highly-scalable | AWS DynamoDB Adapter |
-| `pkg/database/adapters/cosmosdb` | ❌ | multi-region | Azure CosmosDB Adapter |
-| `pkg/database/adapters/firestore` | ❌ | mobile-backend | GCP Firestore Adapter |
+| `pkg/database/timeseries` | ✅ | telemetry | Time-series Interface |
+| `pkg/database/timeseries/adapters/timestream`| ✅ | telemetry | AWS Timestream Adapter |
+| `pkg/database/timeseries/adapters/influxdb` | ✅ | telemetry | InfluxDB Adapter |
+| `pkg/database/document` | ✅ | cms | Document DB Interface |
+| `pkg/database/graph` | ✅ | recommendation | Graph DB Interface |
+| `pkg/database/adapters/dynamodb` | ✅ | highly-scalable | AWS DynamoDB Adapter |
+| `pkg/database/adapters/cosmosdb` | ✅ | multi-region | Azure CosmosDB Adapter |
+| `pkg/database/adapters/firestore` | ✅ | mobile-backend | GCP Firestore Adapter |
 
 ### Storage (File/Block/Object)
 | Package | Status | Enables Services | Description |
 |---------|--------|------------------|-------------|
-| `pkg/storage/blob` | ❌ | media-store | Object Storage (S3/GCS/Azure) |
+| `pkg/storage/blob` | ✅ | media-store | Object Storage (S3/GCS/Azure) |
 | `pkg/storage/file` | ❌ | shared-fs | Network File Systems (EFS/NFS) |
 | `pkg/storage/block` | ❌ | vm-disk | Block Storage (EBS) |
 | `pkg/storage/archive` | ❌ | backup | Cold Storage (Glacier) |

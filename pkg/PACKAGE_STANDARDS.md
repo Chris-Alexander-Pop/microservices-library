@@ -205,6 +205,139 @@ pkg/datastructures/
     └── doc.go                       # [OPTIONAL] Package documentation
 ```
 
+### 2.4 Domain Subpackage Layout
+
+For domain packages that encompass **multiple distinct types or backends** with fundamentally different interfaces, use subpackages. Each subpackage follows the standard layout with its own adapters.
+
+#### When to Use Subpackages
+
+| Criteria | Flat Adapters | Subpackages |
+|----------|---------------|-------------|
+| Single interface, multiple backends | ✅ Use | ❌ Avoid |
+| Multiple distinct interfaces | ❌ Avoid | ✅ Use |
+| Backends share same operations | ✅ Use | ❌ Avoid |
+| Backends have unique operations | ❌ Avoid | ✅ Use |
+| Configuration differs significantly | ❌ Avoid | ✅ Use |
+
+**Examples:**
+
+| Package | Structure | Reason |
+|---------|-----------|--------|
+| `pkg/cache` | Flat adapters | One `Cache` interface, Redis/Memory backends have same API |
+| `pkg/database` | Subpackages | SQL, Document, Vector, Graph have **different** interfaces |
+| `pkg/storage` | Subpackages | Blob and File storage have **different** operations |
+| `pkg/messaging` | Flat adapters | One `Bus` interface, Kafka/RabbitMQ backends have same API |
+
+#### Subpackage Layout
+
+```
+pkg/{domain}/
+├── {domain}.go              # [REQUIRED] Shared types, enums, driver constants
+├── doc.go                   # [REQUIRED] Domain-level documentation
+├── errors.go                # [OPTIONAL] Domain-wide errors (if any)
+│
+├── {type1}/                 # e.g., "sql", "document", "vector"
+│   ├── {type1}.go           # [REQUIRED] Interface, Config for this type
+│   ├── errors.go            # [REQUIRED if errors] Type-specific errors
+│   ├── instrumented.go      # [REQUIRED] Observability wrapper
+│   ├── doc.go               # [OPTIONAL] Type documentation
+│   └── adapters/            # [REQUIRED] Implementations for this type
+│       ├── memory/          # [REQUIRED] In-memory adapter for testing
+│       │   └── memory.go
+│       └── {driver}/        # Real implementations
+│           └── {driver}.go
+│
+├── {type2}/                 # Another type with its own adapters
+│   ├── {type2}.go
+│   ├── instrumented.go
+│   └── adapters/
+│       └── ...
+│
+├── tests/                   # [RECOMMENDED] Integration tests
+└── plugins/                 # [OPTIONAL] Extensions
+```
+
+#### Example: Database Domain
+
+```
+pkg/database/
+├── database.go              # StoreType enum, Driver constants, shared utilities
+├── doc.go                   # "Package database provides unified database access"
+├── tls.go                   # Shared TLS helper
+│
+├── sql/
+│   ├── sql.go               # SQL interface, Config
+│   ├── errors.go            # ErrConnectionFailed, ErrQueryFailed
+│   ├── instrumented.go      # InstrumentedSQL wrapper
+│   └── adapters/
+│       ├── memory/          # SQLite in-memory for testing
+│       ├── postgres/
+│       ├── mysql/
+│       └── sqlite/
+│
+├── document/
+│   ├── document.go          # Interface (Insert, Find, Update, Delete)
+│   ├── errors.go
+│   ├── instrumented.go
+│   └── adapters/
+│       ├── memory/          # In-memory doc store for testing
+│       ├── dynamodb/
+│       ├── mongodb/
+│       └── firestore/
+│
+├── vector/
+│   ├── vector.go            # Store interface (Search, Upsert, Delete)
+│   ├── errors.go
+│   ├── instrumented.go
+│   └── adapters/
+│       ├── memory/
+│       └── pinecone/
+│
+└── timeseries/
+    ├── timeseries.go        # Timeseries interface (Write, Query)
+    └── adapters/
+        ├── memory/
+        ├── influxdb/
+        └── timestream/
+```
+
+#### Root Package Responsibilities
+
+When using subpackages, the root package (`{domain}.go`) should contain:
+
+1. **Driver/Type Constants**: Enums for all supported drivers across all types
+2. **Shared Types**: Types used by multiple subpackages (e.g., `StoreType`)
+3. **Shared Utilities**: Helper functions used across subpackages (e.g., TLS loading)
+4. **Re-exports** (optional): Convenience aliases for common types
+
+```go
+// pkg/database/database.go
+package database
+
+// Driver constants for all database types
+const (
+    // SQL Drivers
+    DriverPostgres = "postgres"
+    DriverMySQL    = "mysql"
+    
+    // Document Drivers
+    DriverDynamoDB = "dynamodb"
+    DriverMongoDB  = "mongodb"
+    
+    // Vector Drivers
+    DriverPinecone = "pinecone"
+)
+
+// StoreType identifies the category of database
+type StoreType string
+
+const (
+    StoreTypeSQL      StoreType = "sql"
+    StoreTypeDocument StoreType = "document"
+    StoreTypeVector   StoreType = "vector"
+)
+```
+
 ---
 
 ## 3. File Naming Conventions
