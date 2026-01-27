@@ -162,11 +162,12 @@
 
 | Package | Status | Enables Services | Description |
 |---------|--------|------------------|-------------|
+| `pkg/workflow` | ✅ | state-machine | Workflow Engine Interface + Memory Adapter |
 | `pkg/workflow/adapters/stepfunctions` | ❌ | state-machine | AWS Step Functions |
 | `pkg/workflow/adapters/temporal` | ❌ | durable-execution| Temporal Client |
 | `pkg/workflow/adapters/logicapps` | ❌ | integration | Azure Logic Apps |
-| `pkg/workflow/saga` | ❌ | order-manager | Saga Pattern Orchestrator |
-| `pkg/workflow/scheduler` | ❌ | cron-service | Distributed Job Scheduler |
+| `pkg/workflow/saga` | ✅ | order-manager | Saga Pattern Orchestrator |
+| `pkg/workflow/scheduler` | ✅ | cron-service | Distributed Job Scheduler |
 
 ---
 
@@ -203,15 +204,16 @@
 | `pkg/network/loadbalancer/adapters/aws`| ❌ | cloud-infra | AWS ELB/ALB Management |
 | `pkg/network/loadbalancer/adapters/gcp`| ❌ | cloud-infra | GCP Load Balancing |
 | `pkg/network/dns` | ✅ | service-discovery| DNS Management Interface + Memory Adapter |
-| `pkg/network/cdn` | ❌ | content-delivery | CDN Management (CloudFront/Akamai) |
-| `pkg/network/apigateway` | ❌ | api-routing | API Gateway Management |
-| `pkg/network/ip` | ❌ | geo-blocking | IP Intelligence / Geolocation |
+| `pkg/network/cdn` | ✅ | content-delivery | CDN Management Interface + Memory Adapter |
+| `pkg/network/apigateway` | ✅ | api-routing | API Gateway Interface + Memory Adapter |
+| `pkg/network/ip` | ✅ | geo-blocking | IP Intelligence Interface + Memory Adapter |
 
 ### Compute
 | Package | Status | Enables Services | Description |
 |---------|--------|------------------|-------------|
 | `pkg/compute/vm` | ✅ | iaas | VM Management Interface + Memory Adapter |
 | `pkg/compute/container` | ✅ | paas | Container Runtime Interface + Memory Adapter |
+| `pkg/compute/serverless` | ✅ | faas | Serverless Runtime Interface + Memory Adapter |
 | `pkg/compute/serverless/lambda` | ❌ | faas | AWS Lambda Management |
 | `pkg/compute/serverless/gcf` | ❌ | faas | Google Cloud Functions |
 | `pkg/compute/container/k8s` | ❌ | paas | Kubernetes Client/Controller |
