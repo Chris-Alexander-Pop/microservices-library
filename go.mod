@@ -152,6 +152,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.17 // indirect
 	github.com/aws/aws-sdk-go-v2/service/iot v1.72.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/iotdataplane v1.32.17 // indirect
+	github.com/aws/aws-sdk-go-v2/service/rekognition v1.51.16 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sagemaker v1.230.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.0.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.30.9 // indirect

@@ -63,6 +63,26 @@
 | `pkg/ai/perception/vision` | ✅ | media-analysis | Image Classification/OCR |
 | `pkg/ai/perception/speech` | ✅ | transcription | STT / TTS |
 | `pkg/ai/perception/ocr` | ✅ | document-parser | Document Intelligence |
+| `pkg/ai/perception/vision/adapters/rekognition` | ✅ | media-analysis | AWS Rekognition Adapter |
+| `pkg/ai/perception/speech/adapters/openai` | ✅ | transcription | OpenAI Whisper Adapter |
+
+### NLP (`pkg/ai/nlp`)
+| Package | Status | Enables Services | Description |
+|---------|--------|------------------|-------------|
+| `pkg/ai/nlp/embedding` | ✅ | semantic-search | Text Embeddings Interface |
+| `pkg/ai/nlp/embedding/adapters/openai` | ✅ | semantic-search | OpenAI Embeddings |
+| `pkg/ai/nlp/embedding/adapters/huggingface` | ✅ | semantic-search | HF Inference Embeddings |
+| `pkg/ai/nlp/rag` | ✅ | knowledge-bot | RAG Orchestrator |
+
+### Generative AI (`pkg/ai/genai`)
+| Package | Status | Enables Services | Description |
+|---------|--------|------------------|-------------|
+| `pkg/ai/genai/llm` | ✅ | chatbot | LLM Client Interface |
+| `pkg/ai/genai/llm/adapters/openai` | ✅ | chatbot | OpenAI Chat Adapter |
+| `pkg/ai/genai/llm/adapters/anthropic` | ✅ | chatbot | Anthropic Chat Adapter |
+| `pkg/ai/genai/image` | ✅ | creative-tools | Image Generation Interface |
+| `pkg/ai/genai/image/adapters/openai` | ✅ | creative-tools | DALL-E Adapter |
+| `pkg/ai/genai/agents` | ✅ | autonomous-tasks| ReAct Agent Framework |
 
 ---
 
