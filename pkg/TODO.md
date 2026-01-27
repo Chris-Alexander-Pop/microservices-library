@@ -236,10 +236,10 @@
 
 | Package | Status | Enables Services | Description |
 |---------|--------|------------------|-------------|
-| `pkg/iot/protocols/mqtt` | ❌ | vehicle-telemetry| MQTT Client |
-| `pkg/iot/device/ota` | ❌ | device-manager | Over-the-Air Updates |
-| `pkg/iot/adapters/awsiot` | ❌ | iot-cloud | AWS IoT Core |
-| `pkg/iot/adapters/greengrass` | ❌ | edge-compute | AWS Greengrass |
+| `pkg/iot/protocols/mqtt` | ✅ | vehicle-telemetry| MQTT Client |
+| `pkg/iot/device/ota` | ✅ | device-manager | Over-the-Air Updates |
+| `pkg/iot/adapters/awsiot` | ✅ | iot-cloud | AWS IoT Core |
+| `pkg/iot/adapters/greengrass` | ✅ | edge-compute | AWS Greengrass |
 
 ---
 
@@ -247,9 +247,9 @@
 
 | Package | Status | Enables Services | Description |
 |---------|--------|------------------|-------------|
-| `pkg/enterprise/ddd` | ❌ | core-business | Domain-Driven Design Primitives |
-| `pkg/enterprise/cqrs` | ❌ | reporting | Command Query Responsibility Segregation |
-| `pkg/enterprise/eventsource` | ❌ | audit-log | Event Sourcing Store |
+| `pkg/enterprise/ddd` | ✅ | core-business | Domain-Driven Design Primitives |
+| `pkg/enterprise/cqrs` | ✅ | reporting | Command Query Responsibility Segregation |
+| `pkg/enterprise/eventsource` | ✅ | audit-log | Event Sourcing Store |
 
 ---
 
