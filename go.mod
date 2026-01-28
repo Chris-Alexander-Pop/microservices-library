@@ -10,7 +10,6 @@ require (
 	cloud.google.com/go/firestore v1.20.0
 	cloud.google.com/go/functions v1.19.7
 	cloud.google.com/go/pubsub/v2 v2.0.0
-	cloud.google.com/go/secretmanager v1.16.0
 	cloud.google.com/go/storage v1.59.1
 	firebase.google.com/go/v4 v4.18.0
 	github.com/99designs/gqlgen v0.17.86
@@ -19,7 +18,6 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos v1.4.2
 	github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs v1.4.0
 	github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.10.0
-	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.4.0
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.4
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.6.0
 	github.com/IBM/sarama v1.46.3
@@ -42,7 +40,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/rekognition v1.51.16
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.95.1
 	github.com/aws/aws-sdk-go-v2/service/sagemaker v1.230.1
-	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.41.1
 	github.com/aws/aws-sdk-go-v2/service/sesv2 v1.59.1
 	github.com/aws/aws-sdk-go-v2/service/sfn v1.40.6
 	github.com/aws/aws-sdk-go-v2/service/sns v1.39.11
