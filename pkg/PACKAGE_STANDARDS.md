@@ -888,7 +888,7 @@ if tracker.Track(userID) {
 Use for encryption/hashing:
 
 ```go
-import "github.com/chris-alexander-pop/system-design-library/pkg/crypto"
+import "github.com/chris-alexander-pop/system-design-library/pkg/security/crypto"
 
 // Encryption
 enc := crypto.NewAESEncryptor(key)

@@ -19,7 +19,7 @@
 | **Sharding** | `pkg/database/sharding/*`, `pkg/database/partitioning/*` |
 | **Distributed Lock** | `pkg/concurrency/distlock/*` |
 | **Vector Search** | `pkg/database/vector/*`, `pkg/database/rerank/*` |
-| **Big Data** | `pkg/bigdata/*` (MapReduce, Spark, Parquet, Avro, DuckDB) |
+| **Big Data** | `pkg/data/bigdata/*` (MapReduce, Spark, Parquet, Avro, DuckDB) |
 | **Auth** | `pkg/auth/*` (JWT, OAuth2, OIDC, MFA, Social) |
 | **Messaging** | `pkg/messaging/*` (Kafka, NATS, RabbitMQ, SQS, SNS, Pub/Sub) |
 | **Cache** | `pkg/cache/*` (Redis, memory) |
@@ -130,17 +130,17 @@
 ### Big Data (`pkg/bigdata`)
 | Package | Status | Enables Services | Description |
 |---------|--------|------------------|-------------|
-| `pkg/bigdata/formats/avro` | ✅ | data-ingestion | Avro Format Support |
-| `pkg/bigdata/formats/parquet` | ✅ | data-ingestion | Parquet Format Support |
-| `pkg/bigdata/compute/spark` | ✅ | big-data-job | Spark Connect Client |
-| `pkg/bigdata/compute/mapreduce` | ✅ | big-data-job | MapReduce Implementation |
-| `pkg/bigdata/olap/duckdb` | ✅ | analytics | Embedded OLAP (DuckDB) |
-| `pkg/bigdata/adapters/bigquery` | ✅ | analytics | GCP BigQuery Adapter |
-| `pkg/bigdata/adapters/redshift` | ✅ | analytics | AWS Redshift Adapter |
-| `pkg/bigdata/adapters/synapse` | ✅ | analytics | Azure Synapse Adapter |
-| `pkg/bigdata/lake/hdfs` | ✅ | storage | HDFS Client |
-| `pkg/bigdata/pipeline/dag` | ✅ | workflow | DAG Executor |
-| `pkg/bigdata/pipeline/etl` | ✅ | etl | ETL Pipeline Framework |
+| `pkg/data/bigdata/formats/avro` | ✅ | data-ingestion | Avro Format Support |
+| `pkg/data/bigdata/formats/parquet` | ✅ | data-ingestion | Parquet Format Support |
+| `pkg/data/bigdata/compute/spark` | ✅ | big-data-job | Spark Connect Client |
+| `pkg/data/bigdata/compute/mapreduce` | ✅ | big-data-job | MapReduce Implementation |
+| `pkg/data/bigdata/olap/duckdb` | ✅ | analytics | Embedded OLAP (DuckDB) |
+| `pkg/data/bigdata/adapters/bigquery` | ✅ | analytics | GCP BigQuery Adapter |
+| `pkg/data/bigdata/adapters/redshift` | ✅ | analytics | AWS Redshift Adapter |
+| `pkg/data/bigdata/adapters/synapse` | ✅ | analytics | Azure Synapse Adapter |
+| `pkg/data/bigdata/lake/hdfs` | ✅ | storage | HDFS Client |
+| `pkg/data/bigdata/pipeline/dag` | ✅ | workflow | DAG Executor |
+| `pkg/data/bigdata/pipeline/etl` | ✅ | etl | ETL Pipeline Framework |
 
 ### Database (`pkg/database`)
 
@@ -293,7 +293,7 @@
 | **Network** | `pkg/network/dhcp` | ✅ | IP Address Management System (IPAM) |
 | **Network** | `pkg/network/firewall` | ✅ | Distributed Firewall / Security Groups |
 | **Storage** | `pkg/storage/controller` | ✅ | Volume Controller (Ceph/LVM wrapper) |
-| **Identity** | `pkg/iam/provider` | ✅ | Identity Provider Server (OIDC/SAML issuer) |
+| **Identity** | `pkg/security/iam/provider` | ✅ | Identity Provider Server (OIDC/SAML issuer) |
 | **Billing** | `pkg/metering` | ✅ | Usage Metering & Rating Engine |
 | **Control** | `pkg/cloud/controlplane` | ✅ | API Server & State Manager (The "Brain") |
 
