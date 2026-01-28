@@ -286,14 +286,14 @@
 
 | Domain | Package | Needs Implementation | Description |
 |--------|---------|---------------------|-------------|
-| **Compute** | `pkg/cloud/hypervisor` | ❌ | VM Management (Libvirt/QEMU/Firecracker) |
-| **Compute** | `pkg/cloud/provisioning` | ❌ | Bare Metal Provisioning (PXE/IPMI) |
-| **Compute** | `pkg/cloud/scheduler` | ❌ | Placement Logic (Bin-packing VMs onto Hosts) |
-| **Network** | `pkg/network/sdn` | ❌ | Software Defined Networking (VPC/Overlay) |
-| **Network** | `pkg/network/dhcp` | ❌ | IP Address Management System (IPAM) |
-| **Network** | `pkg/network/firewall` | ❌ | Distributed Firewall / Security Groups |
-| **Storage** | `pkg/storage/controller` | ❌ | Volume Controller (Ceph/LVM wrapper) |
-| **Identity** | `pkg/iam/provider` | ❌ | Identity Provider Server (OIDC/SAML issuer) |
-| **Billing** | `pkg/metering` | ❌ | Usage Metering & Rating Engine |
-| **Control** | `pkg/cloud/controlplane` | ❌ | API Server & State Manager (The "Brain") |
+| **Compute** | `pkg/cloud/hypervisor` | ✅ | VM Management (Libvirt/QEMU/Firecracker) |
+| **Compute** | `pkg/cloud/provisioning` | ✅ | Bare Metal Provisioning (PXE/IPMI) |
+| **Compute** | `pkg/cloud/scheduler` | ✅ | Placement Logic (Bin-packing VMs onto Hosts) |
+| **Network** | `pkg/network/sdn` | ✅ | Software Defined Networking (VPC/Overlay) |
+| **Network** | `pkg/network/dhcp` | ✅ | IP Address Management System (IPAM) |
+| **Network** | `pkg/network/firewall` | ✅ | Distributed Firewall / Security Groups |
+| **Storage** | `pkg/storage/controller` | ✅ | Volume Controller (Ceph/LVM wrapper) |
+| **Identity** | `pkg/iam/provider` | ✅ | Identity Provider Server (OIDC/SAML issuer) |
+| **Billing** | `pkg/metering` | ✅ | Usage Metering & Rating Engine |
+| **Control** | `pkg/cloud/controlplane` | ✅ | API Server & State Manager (The "Brain") |
 
