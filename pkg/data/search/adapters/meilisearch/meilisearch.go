@@ -2,7 +2,6 @@ package meilisearch
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -330,9 +329,4 @@ func (e *Engine) Refresh(ctx context.Context, indexName string) error {
 
 func (e *Engine) Close() error {
 	return nil
-}
-
-// decodeRawMessage decodes a json.RawMessage into the given type.
-func decodeRawMessage(raw json.RawMessage, v interface{}) error {
-	return json.Unmarshal(raw, v)
 }

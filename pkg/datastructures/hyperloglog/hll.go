@@ -19,35 +19,35 @@ import (
 // HyperLogLog is a probabilistic cardinality estimator.
 type HyperLogLog struct {
 	registers []uint8 // Bucket registers
-	precision uint8   // Precision (log2 of number of registers)
-	numRegs   uint32  // Number of registers (2^precision)
+	Precision uint8   // Precision (log2 of number of registers)
+	numRegs   uint32  // Number of registers (2^Precision)
 	mu        *concurrency.SmartRWMutex
 }
 
-// New creates a new HyperLogLog with the given precision.
+// New creates a new HyperLogLog with the given Precision.
 // Precision must be between 4 and 16 (inclusive).
-// Higher precision = more accuracy but more memory.
+// Higher Precision = more accuracy but more memory.
 //
-// Memory usage: 2^precision bytes
-// Typical error rate: 1.04 / sqrt(2^precision)
+// Memory usage: 2^Precision bytes
+// Typical error rate: 1.04 / sqrt(2^Precision)
 //
 // Recommended:
-//   - precision 10: 1KB memory, ~3.25% error
-//   - precision 12: 4KB memory, ~1.625% error
-//   - precision 14: 16KB memory, ~0.8% error
-func New(precision uint8) *HyperLogLog {
-	if precision < 4 {
-		precision = 4
+//   - Precision 10: 1KB memory, ~3.25% error
+//   - Precision 12: 4KB memory, ~1.625% error
+//   - Precision 14: 16KB memory, ~0.8% error
+func New(Precision uint8) *HyperLogLog {
+	if Precision < 4 {
+		Precision = 4
 	}
-	if precision > 16 {
-		precision = 16
+	if Precision > 16 {
+		Precision = 16
 	}
 
-	numRegs := uint32(1) << precision
+	numRegs := uint32(1) << Precision
 
 	return &HyperLogLog{
 		registers: make([]uint8, numRegs),
-		precision: precision,
+		Precision: Precision,
 		numRegs:   numRegs,
 		mu:        concurrency.NewSmartRWMutex(concurrency.MutexConfig{Name: "HyperLogLog"}),
 	}
@@ -68,11 +68,11 @@ func (hll *HyperLogLog) addHash(hash uint64) {
 	hll.mu.Lock()
 	defer hll.mu.Unlock()
 
-	// Use first 'precision' bits as register index
-	regIdx := uint32(hash >> (64 - hll.precision))
+	// Use first 'Precision' bits as register index
+	regIdx := uint32(hash >> (64 - hll.Precision))
 
 	// Count leading zeros in remaining bits + 1
-	remaining := (hash << hll.precision) | (1 << (hll.precision - 1))
+	remaining := (hash << hll.Precision) | (1 << (hll.Precision - 1))
 	leadingZeros := countLeadingZeros(remaining) + 1
 
 	// Update register if new value is larger
@@ -100,7 +100,7 @@ func (hll *HyperLogLog) Count() uint64 {
 	m := float64(hll.numRegs)
 
 	// Alpha correction factor
-	alpha := getAlpha(hll.precision)
+	alpha := getAlpha(hll.Precision)
 
 	// Raw estimate
 	estimate := alpha * m * m / sum
@@ -118,9 +118,9 @@ func (hll *HyperLogLog) Count() uint64 {
 }
 
 // Merge combines another HyperLogLog into this one.
-// Both must have the same precision.
+// Both must have the same Precision.
 func (hll *HyperLogLog) Merge(other *HyperLogLog) bool {
-	if hll.precision != other.precision {
+	if hll.Precision != other.Precision {
 		return false
 	}
 
@@ -177,9 +177,9 @@ func countLeadingZeros(x uint64) uint8 {
 	return count
 }
 
-// getAlpha returns the correction factor for the given precision.
-func getAlpha(precision uint8) float64 {
-	switch precision {
+// getAlpha returns the correction factor for the given Precision.
+func getAlpha(Precision uint8) float64 {
+	switch Precision {
 	case 4:
 		return 0.673
 	case 5:
@@ -187,7 +187,7 @@ func getAlpha(precision uint8) float64 {
 	case 6:
 		return 0.709
 	default:
-		m := float64(uint32(1) << precision)
+		m := float64(uint32(1) << Precision)
 		return 0.7213 / (1 + 1.079/m)
 	}
 }

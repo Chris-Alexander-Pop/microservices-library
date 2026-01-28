@@ -24,7 +24,7 @@ type Proposer struct {
 type Acceptor struct {
 	lastPromisedID int
 	acceptedID     int
-	acceptedValue  interface{}
+	AcceptedValue  interface{}
 	mu             sync.Mutex
 }
 
@@ -35,7 +35,7 @@ type Learner struct {
 
 // Transport abstracts network.
 type Transport interface {
-	Prepare(peerID int, proposalID int) (promised bool, acceptedID int, acceptedValue interface{})
+	Prepare(peerID int, proposalID int) (promised bool, acceptedID int, AcceptedValue interface{})
 	Accept(peerID int, proposalID int, value interface{}) (accepted bool)
 }
 
@@ -110,7 +110,7 @@ func (a *Acceptor) ReceivePrepare(proposalID int) (bool, int, interface{}) {
 
 	if proposalID > a.lastPromisedID {
 		a.lastPromisedID = proposalID
-		return true, a.acceptedID, a.acceptedValue
+		return true, a.acceptedID, a.AcceptedValue
 	}
 	return false, -1, nil
 }
@@ -123,7 +123,7 @@ func (a *Acceptor) ReceiveAccept(proposalID int, value interface{}) bool {
 	if proposalID >= a.lastPromisedID {
 		a.lastPromisedID = proposalID
 		a.acceptedID = proposalID
-		a.acceptedValue = value
+		a.AcceptedValue = value
 		return true
 	}
 	return false

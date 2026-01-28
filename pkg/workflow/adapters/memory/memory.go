@@ -94,7 +94,7 @@ func (e *Engine) Start(ctx context.Context, opts workflow.StartOptions) (*workfl
 
 func (e *Engine) simulateExecution(ctx context.Context, exec *workflow.Execution, timeout time.Duration) {
 	if timeout == 0 {
-		timeout = e.config.DefaultTimeout
+		_ = e.config.DefaultTimeout
 	}
 
 	// Simulate some work

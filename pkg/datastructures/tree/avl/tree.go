@@ -8,44 +8,44 @@ import (
 
 // Tree is an AVL Tree (self-balancing BST).
 type Tree[K constraints.Ordered, V any] struct {
-	root *node[K, V]
+	Root *Node[K, V]
 	mu   sync.RWMutex
 }
 
-type node[K constraints.Ordered, V any] struct {
-	key    K
-	value  V
-	height int
-	left   *node[K, V]
-	right  *node[K, V]
+type Node[K constraints.Ordered, V any] struct {
+	Key    K
+	Value  V
+	Height int
+	Left   *Node[K, V]
+	Right  *Node[K, V]
 }
 
 func New[K constraints.Ordered, V any]() *Tree[K, V] {
 	return &Tree[K, V]{}
 }
 
-func (t *Tree[K, V]) Put(key K, value V) {
+func (t *Tree[K, V]) Put(Key K, Value V) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	t.root = insert(t.root, key, value)
+	t.Root = insert(t.Root, Key, Value)
 }
 
-func (t *Tree[K, V]) Get(key K) (V, bool) {
+func (t *Tree[K, V]) Get(Key K) (V, bool) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
-	n := search(t.root, key)
+	n := search(t.Root, Key)
 	if n == nil {
 		var zero V
 		return zero, false
 	}
-	return n.value, true
+	return n.Value, true
 }
 
-func height[K constraints.Ordered, V any](n *node[K, V]) int {
+func Height[K constraints.Ordered, V any](n *Node[K, V]) int {
 	if n == nil {
 		return 0
 	}
-	return n.height
+	return n.Height
 }
 
 func max(a, b int) int {
@@ -55,23 +55,23 @@ func max(a, b int) int {
 	return b
 }
 
-func updateHeight[K constraints.Ordered, V any](n *node[K, V]) {
-	n.height = 1 + max(height(n.left), height(n.right))
+func updateHeight[K constraints.Ordered, V any](n *Node[K, V]) {
+	n.Height = 1 + max(Height(n.Left), Height(n.Right))
 }
 
-func getBalance[K constraints.Ordered, V any](n *node[K, V]) int {
+func getBalance[K constraints.Ordered, V any](n *Node[K, V]) int {
 	if n == nil {
 		return 0
 	}
-	return height(n.left) - height(n.right)
+	return Height(n.Left) - Height(n.Right)
 }
 
-func rightRotate[K constraints.Ordered, V any](y *node[K, V]) *node[K, V] {
-	x := y.left
-	T2 := x.right
+func rightRotate[K constraints.Ordered, V any](y *Node[K, V]) *Node[K, V] {
+	x := y.Left
+	T2 := x.Right
 
-	x.right = y
-	y.left = T2
+	x.Right = y
+	y.Left = T2
 
 	updateHeight(y)
 	updateHeight(x)
@@ -79,12 +79,12 @@ func rightRotate[K constraints.Ordered, V any](y *node[K, V]) *node[K, V] {
 	return x
 }
 
-func leftRotate[K constraints.Ordered, V any](x *node[K, V]) *node[K, V] {
-	y := x.right
-	T2 := y.left
+func leftRotate[K constraints.Ordered, V any](x *Node[K, V]) *Node[K, V] {
+	y := x.Right
+	T2 := y.Left
 
-	y.left = x
-	x.right = T2
+	y.Left = x
+	x.Right = T2
 
 	updateHeight(x)
 	updateHeight(y)
@@ -92,17 +92,17 @@ func leftRotate[K constraints.Ordered, V any](x *node[K, V]) *node[K, V] {
 	return y
 }
 
-func insert[K constraints.Ordered, V any](n *node[K, V], key K, value V) *node[K, V] {
+func insert[K constraints.Ordered, V any](n *Node[K, V], Key K, Value V) *Node[K, V] {
 	if n == nil {
-		return &node[K, V]{key: key, value: value, height: 1}
+		return &Node[K, V]{Key: Key, Value: Value, Height: 1}
 	}
 
-	if key < n.key {
-		n.left = insert(n.left, key, value)
-	} else if key > n.key {
-		n.right = insert(n.right, key, value)
+	if Key < n.Key {
+		n.Left = insert(n.Left, Key, Value)
+	} else if Key > n.Key {
+		n.Right = insert(n.Right, Key, Value)
 	} else {
-		n.value = value // Update value
+		n.Value = Value // Update Value
 		return n
 	}
 
@@ -110,35 +110,35 @@ func insert[K constraints.Ordered, V any](n *node[K, V], key K, value V) *node[K
 	balance := getBalance(n)
 
 	// Left Left
-	if balance > 1 && key < n.left.key {
+	if balance > 1 && Key < n.Left.Key {
 		return rightRotate(n)
 	}
 	// Right Right
-	if balance < -1 && key > n.right.key {
+	if balance < -1 && Key > n.Right.Key {
 		return leftRotate(n)
 	}
 	// Left Right
-	if balance > 1 && key > n.left.key {
-		n.left = leftRotate(n.left)
+	if balance > 1 && Key > n.Left.Key {
+		n.Left = leftRotate(n.Left)
 		return rightRotate(n)
 	}
 	// Right Left
-	if balance < -1 && key < n.right.key {
-		n.right = rightRotate(n.right)
+	if balance < -1 && Key < n.Right.Key {
+		n.Right = rightRotate(n.Right)
 		return leftRotate(n)
 	}
 
 	return n
 }
 
-func search[K constraints.Ordered, V any](n *node[K, V], key K) *node[K, V] {
+func search[K constraints.Ordered, V any](n *Node[K, V], Key K) *Node[K, V] {
 	if n == nil {
 		return nil
 	}
-	if key < n.key {
-		return search(n.left, key)
-	} else if key > n.key {
-		return search(n.right, key)
+	if Key < n.Key {
+		return search(n.Left, Key)
+	} else if Key > n.Key {
+		return search(n.Right, Key)
 	}
 	return n
 }

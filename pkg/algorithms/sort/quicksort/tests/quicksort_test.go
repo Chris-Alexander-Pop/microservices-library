@@ -1,0 +1,42 @@
+package quicksort_test
+
+import (
+	"github.com/chris-alexander-pop/system-design-library/pkg/algorithms/sort/quicksort"
+	"sort"
+	"testing"
+)
+
+func TestSort(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []int
+	}{
+		{"Already sorted", []int{1, 2, 3, 4, 5}},
+		{"Reverse sorted", []int{5, 4, 3, 2, 1}},
+		{"Random", []int{3, 1, 4, 1, 5, 9, 2, 6}},
+		{"Duplicates", []int{1, 2, 2, 3, 1}},
+		{"Empty", []int{}},
+		{"Single", []int{1}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Make a copy to sort
+			data := make([]int, len(tt.input))
+			copy(data, tt.input)
+
+			// quicksort.Sort using our implementation
+			quicksort.Sort(data)
+
+			// verify
+			if !sort.IntsAreSorted(data) {
+				t.Errorf("quicksort.Sort() failed, got %v", data)
+			}
+
+			// Verify elements are same (length check usually enough if sorted)
+			if len(data) != len(tt.input) {
+				t.Errorf("Length changed")
+			}
+		})
+	}
+}

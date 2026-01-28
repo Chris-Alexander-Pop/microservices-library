@@ -48,9 +48,9 @@ type Config struct {
 	EFSRegion string `env:"FILE_EFS_REGION" env-default:"us-east-1"`
 
 	// Azure Files specific
-	AzureAccountName   string `env:"FILE_AZURE_ACCOUNT_NAME"`
-	AzureAccountKey    string `env:"FILE_AZURE_ACCOUNT_KEY"`
-	AzureShareName     string `env:"FILE_AZURE_SHARE_NAME"`
+	AzureAccountName string `env:"FILE_AZURE_ACCOUNT_NAME"`
+	AzureAccountKey  string `env:"FILE_AZURE_ACCOUNT_KEY"`
+	AzureShareName   string `env:"FILE_AZURE_SHARE_NAME"`
 
 	// Common options
 	MaxFileSize int64         `env:"FILE_MAX_SIZE" env-default:"1073741824"` // 1GB default

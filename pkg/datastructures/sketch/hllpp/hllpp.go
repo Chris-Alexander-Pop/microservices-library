@@ -12,7 +12,7 @@ type HLLPP struct {
 	p         uint // precision (log2 m)
 	registers []uint8
 	sparse    map[uint32]struct{}
-	isSparse  bool
+	IsSparse  bool
 	threshold uint
 }
 
@@ -29,18 +29,18 @@ func New(p uint8) *HLLPP {
 		p:         uint(p),
 		registers: make([]uint8, m),
 		sparse:    make(map[uint32]struct{}),
-		isSparse:  true,
+		IsSparse:  true,
 		threshold: m / 4, // Switch when sparse set has m/4 items (approx)
 	}
 }
 
 func (h *HLLPP) Add(data []byte) {
 	hash := hash64(data)
-	if h.isSparse {
+	if h.IsSparse {
 		h.sparse[uint32(hash)] = struct{}{}
 		if uint(len(h.sparse)) > h.threshold {
 			h.mergeSparse()
-			h.isSparse = false
+			h.IsSparse = false
 		}
 		return
 	}
@@ -82,7 +82,7 @@ func (h *HLLPP) mergeSparse() {
 }
 
 func (h *HLLPP) Count() uint64 {
-	if h.isSparse {
+	if h.IsSparse {
 		return uint64(len(h.sparse)) // Linear counting
 	}
 
