@@ -1,15 +1,17 @@
-package resilience
+package resilience_test
 
 import (
 	"context"
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/chris-alexander-pop/system-design-library/pkg/resilience"
 )
 
 func TestRetry_Success(t *testing.T) {
 	calls := 0
-	err := Retry(context.Background(), DefaultRetryConfig(), func(ctx context.Context) error {
+	err := resilience.Retry(context.Background(), resilience.DefaultRetryConfig(), func(ctx context.Context) error {
 		calls++
 		if calls < 3 {
 			return errors.New("temp fail")
@@ -26,14 +28,14 @@ func TestRetry_Success(t *testing.T) {
 }
 
 func TestRetry_MaxAttempts(t *testing.T) {
-	cfg := DefaultRetryConfig()
+	cfg := resilience.DefaultRetryConfig()
 	cfg.MaxAttempts = 3
 	cfg.InitialBackoff = 1 * time.Millisecond // Fast test
 
 	calls := 0
 	failErr := errors.New("steady fail")
 
-	err := Retry(context.Background(), cfg, func(ctx context.Context) error {
+	err := resilience.Retry(context.Background(), cfg, func(ctx context.Context) error {
 		calls++
 		return failErr
 	})
@@ -48,13 +50,13 @@ func TestRetry_MaxAttempts(t *testing.T) {
 
 func TestRetry_ContextCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	cfg := DefaultRetryConfig()
+	cfg := resilience.DefaultRetryConfig()
 	cfg.InitialBackoff = 100 * time.Millisecond
 
 	// Cancel immediately
 	cancel()
 
-	err := Retry(ctx, cfg, func(ctx context.Context) error {
+	err := resilience.Retry(ctx, cfg, func(ctx context.Context) error {
 		return errors.New("should act on context")
 	})
 

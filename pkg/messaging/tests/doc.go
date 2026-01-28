@@ -1,4 +1,2 @@
-// Package tests provides functionality for tests.
-//
-// TODO: Add detailed documentation.
-package tests
+// Package messaging_test contains integration tests for the messaging package.
+package messaging_test

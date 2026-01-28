@@ -1,50 +1,68 @@
-package tests
+package events_test
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/chris-alexander-pop/system-design-library/pkg/events"
 	"github.com/chris-alexander-pop/system-design-library/pkg/events/adapters/memory"
-	"github.com/chris-alexander-pop/system-design-library/pkg/test"
 )
 
-type EventsTestSuite struct {
-	test.Suite
-	bus events.Bus
-}
+func TestMemoryBus(t *testing.T) {
+	bus := memory.New()
+	defer bus.Close()
 
-func (s *EventsTestSuite) SetupTest() {
-	s.Suite.SetupTest()
-	s.bus = memory.New()
-}
+	ctx := context.Background()
+	topic := "test.topic"
 
-func (s *EventsTestSuite) TestPubSub() {
-	received := make(chan events.Event, 1)
-	topic := "user.created"
+	var wg sync.WaitGroup
+	wg.Add(1)
 
-	err := s.bus.Subscribe(s.Ctx, topic, func(ctx context.Context, e events.Event) error {
-		received <- e
+	var received events.Event
+
+	err := bus.Subscribe(ctx, topic, func(ctx context.Context, e events.Event) error {
+		received = e
+		wg.Done()
 		return nil
 	})
-	s.NoError(err)
-
-	evt := events.Event{
-		Type:    topic,
-		Payload: map[string]string{"user_id": "123"},
+	if err != nil {
+		t.Fatalf("Subscribe failed: %v", err)
 	}
-	err = s.bus.Publish(s.Ctx, topic, evt)
-	s.NoError(err)
+
+	payload := map[string]string{"foo": "bar"}
+	evt := events.Event{
+		ID:        "123",
+		Type:      "test.event",
+		Source:    "test",
+		Timestamp: time.Now(),
+		Payload:   payload,
+	}
+
+	err = bus.Publish(ctx, topic, evt)
+	if err != nil {
+		t.Fatalf("Publish failed: %v", err)
+	}
+
+	// Wait for async handler
+	// Note: MemoryBus implementation might be sync or async.
+	// If sync, WG is done immediately. If async, we wait.
+	// Looking at previous grep, it launched a goroutine.
+	c := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(c)
+	}()
 
 	select {
-	case e := <-received:
-		s.Equal(topic, e.Type)
+	case <-c:
+		// Success
 	case <-time.After(1 * time.Second):
-		s.Fail("Timed out waiting for event")
+		t.Fatal("Timed out waiting for event handler")
 	}
-}
 
-func TestEventsSuite(t *testing.T) {
-	test.Run(t, new(EventsTestSuite))
+	if received.ID != "123" {
+		t.Errorf("Expected event ID 123, got %s", received.ID)
+	}
 }

@@ -1,16 +1,4 @@
-// Package tests provides a generic test suite for messaging.Broker implementations.
-//
-// This package can be used to test any adapter that implements the messaging.Broker interface.
-// It ensures consistency across all messaging backends.
-//
-// # Usage
-//
-//	func TestMemoryBroker(t *testing.T) {
-//	    broker := memory.New(memory.Config{BufferSize: 100})
-//	    defer broker.Close()
-//	    tests.RunBrokerTests(t, broker)
-//	}
-package tests
+package messaging_test
 
 import (
 	"context"
